@@ -1,0 +1,16 @@
+[
+  {
+    "uuid": "01a0ecc3-344e-7fa1-ae9d-995d7eb17ccc",
+    "slug": "sentiment-analysis",
+    "dirName": "260929-sentiment-analysis",
+    "scope": "poc",
+    "status": "complete"
+  },
+  {
+    "uuid": "01a0f148-bed9-7d9a-aaf3-24fe702d3136",
+    "slug": "sentiment-v1",
+    "dirName": "260930-sentiment-v1",
+    "scope": "classic",
+    "status": "complete"
+  }
+]

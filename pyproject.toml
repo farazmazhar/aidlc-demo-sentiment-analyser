@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "very-cool-sentiment-analysis"
+version = "0.1.0"
+description = "A small localhost-only sentiment-analysis web app (FastAPI + sqlite3) with an offline dummy client and an opt-in live Jev/OpenRouter client."
+readme = "README.md"
+requires-python = ">=3.11"
+# Dependency cap (NFR3.1, C1): fastapi + uvicorn at runtime, nothing else.
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+
+[project.optional-dependencies]
+# NFR3.2: the test runner, the coverage plugin and the linter/formatter live
+# here and never in the runtime list, so installing for use stays at two packages.
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.6",
+]
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.setuptools.package-data]
+app = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The coverage settings live in `addopts` as well as under `[tool.coverage]`, so
+# every run of this suite applies the affirmed whole-application floor rather
+# than only the run that remembers to ask for it (NFR-TS1, BR7.1, AC9.1.2).
+addopts = "-q --cov=app --cov-report=term-missing --cov-fail-under=80"
+# Keep the warnings gate: a FastAPI or pydantic deprecation warning is a failure.
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.coverage.report]
+# The floor is an input, not a suggestion; it is never lowered to make a step pass.
+fail_under = 80
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# An explicit, reviewed selection rather than a tool default that drifts between
+# releases (NFR-TS2, C4, AC9.1.3). "S" is the security set: secrets in code,
+# unsafe calls, weak hashing.
+select = ["E", "F", "W", "I", "N", "UP", "S", "B", "C4", "SIM"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency markers are *meant* to be called in argument defaults;
+# the rule's own documented escape hatch names them rather than hiding the rule.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert by construction, hold obviously-fake fixture credentials and shell
+# out to `git` to prove the config file is ignored; the security rules still
+# apply in full to `app/`.
+"tests/*" = ["S101", "S105", "S106", "S603", "S607"]
+
+[tool.ruff.format]
+quote-style = "double"
+line-ending = "lf"

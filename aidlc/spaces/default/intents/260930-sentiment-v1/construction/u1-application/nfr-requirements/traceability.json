@@ -1,0 +1,65 @@
+{
+  "stage": "nfr-requirements",
+  "unit": "u1-application",
+  "upstream_ids": ["NFR1", "NFR2", "NFR3", "NFR4", "NFR5", "NFR6"],
+  "coverage": [
+    { "id": "NFR1", "status": "OK", "target": "NFR1.1, NFR1.2" },
+    { "id": "NFR2", "status": "OK", "target": "NFR2.1, NFR2.2" },
+    { "id": "NFR3", "status": "OK", "target": "NFR3.1, NFR3.2" },
+    { "id": "NFR4", "status": "OK", "target": "NFR4.1, NFR4.2" },
+    { "id": "NFR5", "status": "OK", "target": "NFR5.1, NFR5.2" },
+    { "id": "NFR6", "status": "OK", "target": "NFR6.1, NFR6.2, NFR6.3" }
+  ],
+  "reverse": [
+    {
+      "id": "NFR-P1",
+      "status": "N/A",
+      "target": "Local analysis latency: derived from the unit's own behaviour rather than from an inception NFR, which sets no performance target."
+    },
+    {
+      "id": "NFR-P2",
+      "status": "N/A",
+      "target": "Live-path bound: derived from the contract's outbound timeout rather than from an inception NFR."
+    },
+    {
+      "id": "NFR-P3",
+      "status": "N/A",
+      "target": "Deliberate absence of a throughput target, justified by requirements assumption A4."
+    },
+    {
+      "id": "NFR-S1",
+      "status": "N/A",
+      "target": "Error-body hygiene: derived from the affirmed single-envelope rule rather than from an inception NFR."
+    },
+    {
+      "id": "NFR-SC1",
+      "status": "N/A",
+      "target": "Deliberate absence of a scaling target, justified by requirements assumption A4."
+    },
+    {
+      "id": "NFR-SC2",
+      "status": "N/A",
+      "target": "History growth: derived from the human's decision to keep everything, which no inception NFR states."
+    },
+    {
+      "id": "NFR-SC3",
+      "status": "N/A",
+      "target": "Single-file store: derived from the dependency cap and the local-only constraint."
+    },
+    {
+      "id": "NFR-R1",
+      "status": "N/A",
+      "target": "No partial write on refusal: derived from the function design's rules rather than from an inception NFR."
+    },
+    {
+      "id": "NFR-R2",
+      "status": "N/A",
+      "target": "Migration safety: derived from the user's decision to keep existing rows."
+    },
+    {
+      "id": "NFR-R3",
+      "status": "N/A",
+      "target": "Credential rejection degrades rather than breaks: derived from the requirements' live-mode behaviour."
+    }
+  ]
+}

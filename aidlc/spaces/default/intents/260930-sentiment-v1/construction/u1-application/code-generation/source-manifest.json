@@ -1,0 +1,33 @@
+{
+  "stage": "code-generation",
+  "unit": "u1-application",
+  "version": 1,
+  "writes": [
+    { "path": "app/config.py" },
+    { "path": "app/db.py" },
+    { "path": "app/dummy_client.py" },
+    { "path": "app/main.py" },
+    { "path": "app/models.py" },
+    { "path": "app/openrouter_client.py" },
+    { "path": "app/repository.py" },
+    { "path": "app/routes.py" },
+    { "path": "app/sentiment.py" },
+    { "path": "app/service.py" },
+    { "path": "app/session_auth.py" },
+    { "path": "app/static/index.html" },
+    { "path": "app/static/app.js" },
+    { "path": "tests/conftest.py" },
+    { "path": "tests/test_auth_routes.py" },
+    { "path": "tests/test_config.py" },
+    { "path": "tests/test_db.py" },
+    { "path": "tests/test_dummy_client.py" },
+    { "path": "tests/test_live_client.py" },
+    { "path": "tests/test_page.py" },
+    { "path": "tests/test_repository.py" },
+    { "path": "tests/test_routes.py" },
+    { "path": "tests/test_service.py" },
+    { "path": "tests/test_session_auth.py" },
+    { "path": "pyproject.toml" },
+    { "path": "README.md" }
+  ]
+}

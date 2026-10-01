@@ -1,0 +1,18 @@
+{
+  "stage": "code-generation",
+  "version": 1,
+  "writes": [
+    { "path": "pyproject.toml" },
+    { "path": "README.md" },
+    { "path": "config.example.toml" },
+    { "path": ".gitignore" },
+    { "path": "app/" },
+    { "path": "tests/" },
+    { "path": "data/" },
+    { "path": "aidlc/spaces/default/intents/260929-sentiment-analysis/construction/code-generation/code-generation-plan.md" },
+    { "path": "aidlc/spaces/default/intents/260929-sentiment-analysis/construction/code-generation/unit-test-instructions.md" },
+    { "path": "aidlc/spaces/default/intents/260929-sentiment-analysis/construction/code-generation/code-summary.md" },
+    { "path": "aidlc/spaces/default/intents/260929-sentiment-analysis/construction/code-generation/traceability.json" },
+    { "path": "aidlc/spaces/default/intents/260929-sentiment-analysis/construction/code-generation/source-manifest.json" }
+  ]
+}

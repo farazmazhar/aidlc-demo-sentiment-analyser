@@ -1,0 +1,28 @@
+{
+  "stage": "nfr-design",
+  "unit": "u1-application",
+  "upstream_ids": [
+    "NFR1.1", "NFR1.2",
+    "NFR2.1", "NFR2.2",
+    "NFR3.1", "NFR3.2",
+    "NFR4.1", "NFR4.2",
+    "NFR5.1", "NFR5.2",
+    "NFR6.1", "NFR6.2", "NFR6.3"
+  ],
+  "coverage": [
+    { "id": "NFR1.1", "status": "OK", "target": "Engine resolution defaults to the offline implementation whenever no credential is usable (reliability-design.md; Settings resolver, Engine interface)" },
+    { "id": "NFR1.2", "status": "OK", "target": "The test harness blocks outbound use and raises on any attempt; the live transport is injectable (reliability-design.md; Live transport)" },
+    { "id": "NFR2.1", "status": "OK", "target": "Redaction by construction in every representation, asserted over settings, logs and bodies (security-design.md; Settings resolver, Session credential holder)" },
+    { "id": "NFR2.2", "status": "OK", "target": "One credential source order: session credential, then the gitignored local file (security-design.md; Settings resolver)" },
+    { "id": "NFR3.1", "status": "OK", "target": "No pooling, caching or batching layer; two runtime packages plus the standard library (performance-design.md, tech-stack-decisions.md)" },
+    { "id": "NFR3.2", "status": "OK", "target": "Test, coverage and lint tooling stay under the development extra (tech-stack-decisions.md)" },
+    { "id": "NFR4.1", "status": "OK", "target": "The coverage report is produced over the whole application by the verification command and compared against the floor at every checkpoint (observability-design.md)" },
+    { "id": "NFR4.2", "status": "OK", "target": "The suite result plus the coverage report are the visibility a change gets, since the scope runs no pipeline (observability-design.md)" },
+    { "id": "NFR5.1", "status": "OK", "target": "A single loopback bind constant used by the server start path and asserted by the smoke check (security-design.md)" },
+    { "id": "NFR5.2", "status": "OK", "target": "One process and one file; no hosted service, container or account (security-design.md, scalability-design.md)" },
+    { "id": "NFR6.1", "status": "OK", "target": "One connection-state payload consumed by the health endpoint and the page, so they cannot disagree (observability-design.md; Connection state)" },
+    { "id": "NFR6.2", "status": "OK", "target": "Startup records the resolved mode and warns, naming the config file, when live was requested with no usable key (observability-design.md)" },
+    { "id": "NFR6.3", "status": "OK", "target": "Log lines are built from the redacted representations, so a credential has no formatting path into a log (observability-design.md)" }
+  ],
+  "reverse": []
+}

@@ -1,0 +1,24 @@
+# Example configuration for very-cool-sentiment-analysis.
+#
+# Copy this file to `config.local.toml` and fill in your own key:
+#
+#     cp config.example.toml config.local.toml
+#
+# `config.local.toml` is gitignored (FR1.6) and is the ONLY place the API key
+# should ever live. This example file is committed, so it must never carry a
+# real secret (NFR2).
+
+# Active sentiment engine.
+#   "dummy"      - offline keyword client, no key needed (default)
+#   "openrouter" - live Jev model through the OpenRouter Decisions API
+mode = "dummy"
+
+# OpenRouter API key. Needed only when mode = "openrouter". You can either put
+# it here, or click the connection indicator in the page and authorize the app
+# on OpenRouter — that credential is kept in memory for the session only and
+# never written to this file. Without either, the app runs the offline dummy
+# engine and shows the connection as red. Never commit a real value here.
+api_key = ""
+
+# Model id used by the live client.
+model = "typesafe/jev-1.13"

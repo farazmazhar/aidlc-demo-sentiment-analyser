@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sentiment analysis</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 3.5rem 1.25rem 4rem;
+        line-height: 1.5;
+      }
+      h1 {
+        margin-bottom: 0.25rem;
+      }
+      .lede {
+        margin-top: 0;
+        opacity: 0.85;
+      }
+      form {
+        display: grid;
+        gap: 0.5rem;
+        margin: 1.5rem 0;
+      }
+      textarea {
+        font: inherit;
+        padding: 0.6rem;
+        resize: vertical;
+      }
+      button {
+        font: inherit;
+        padding: 0.5rem 1rem;
+        justify-self: start;
+        cursor: pointer;
+      }
+      section[data-testid="result-panel"],
+      section[data-testid="error-panel"] {
+        border: 1px solid currentColor;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin: 1rem 0;
+      }
+      section[data-testid="error-panel"] {
+        border-color: #b00020;
+        color: #b00020;
+      }
+      .probabilities {
+        list-style: none;
+        margin: 0.5rem 0 0;
+        padding: 0;
+      }
+      #history-list {
+        list-style: none;
+        padding: 0;
+      }
+      .history-item {
+        border-top: 1px solid rgba(128, 128, 128, 0.4);
+        padding: 0.6rem 0;
+      }
+      .history-item .history-text {
+        display: block;
+        font-weight: 600;
+      }
+      .history-meta {
+        opacity: 0.85;
+        font-size: 0.9rem;
+      }
+      /* OpenRouter connection indicator: red = the offline engine is in use,
+         green = the app is talking to OpenRouter. The state is also written in
+         words, so colour is never the only signal (AC5.3.2). */
+      .connection-indicator {
+        position: fixed;
+        top: 0.75rem;
+        left: 0.75rem;
+        z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+        font: inherit;
+        font-size: 0.85rem;
+        padding: 0.5rem 0.9rem;
+        border: 2px solid currentColor;
+        border-radius: 999px;
+        background: Canvas;
+        cursor: pointer;
+        color: #b00020;
+      }
+      .connection-indicator[data-connected="true"] {
+        color: #1a7f37;
+      }
+      .connection-indicator:focus-visible {
+        outline: 3px solid currentColor;
+        outline-offset: 2px;
+      }
+      .connection-dot {
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        background: currentColor;
+      }
+    </style>
+  </head>
+  <body>
+    <button
+      type="button"
+      data-testid="connection-status"
+      id="connection-status"
+      class="connection-indicator"
+      data-connected="false"
+      title="Checking the OpenRouter connection…"
+    >
+      <span class="connection-dot" aria-hidden="true"></span>
+      <span
+        data-testid="connection-status-text"
+        id="connection-status-text"
+        role="status"
+        aria-live="polite"
+      >
+        OpenRouter: checking…
+      </span>
+    </button>
+
+    <main>
+      <h1>Sentiment analysis</h1>
+      <p class="lede">
+        Submit a short piece of text to get a typed label, its confidence and the
+        per-label probabilities. Each result shows which engine produced it.
+        History is stored locally.
+      </p>
+
+      <form data-testid="analyze-form" id="analyze-form" novalidate>
+        <label for="analyze-input">Text to analyse</label>
+        <textarea
+          data-testid="analyze-input"
+          id="analyze-input"
+          name="text"
+          rows="4"
+          placeholder="e.g. I love how this turned out"
+          required
+        ></textarea>
+        <button data-testid="analyze-submit-button" id="analyze-submit-button" type="submit">
+          Analyse
+        </button>
+      </form>
+
+      <section data-testid="error-panel" id="error-panel" role="alert" hidden></section>
+
+      <section data-testid="result-panel" id="result-panel" aria-live="polite" hidden>
+        <h2>Result</h2>
+        <p>
+          Label: <strong data-testid="result-label" id="result-label"></strong>
+        </p>
+        <p>
+          Confidence:
+          <span data-testid="result-confidence" id="result-confidence"></span>
+        </p>
+        <p>
+          Engine:
+          <span data-testid="result-engine" id="result-engine"></span>
+        </p>
+        <ul
+          class="probabilities"
+          data-testid="result-probabilities"
+          id="result-probabilities"
+        ></ul>
+      </section>
+
+      <section aria-labelledby="history-heading">
+        <h2 id="history-heading">History</h2>
+        <p data-testid="history-empty" id="history-empty">No analyses yet.</p>
+        <ol data-testid="history-list" id="history-list"></ol>
+      </section>
+
+      <!-- Cloned once per stored analysis by app.js, so every rendered row keeps
+           the same stable hook. -->
+      <template data-testid="history-item" id="history-item-template">
+        <li class="history-item">
+          <span class="history-text" data-testid="history-item-text"></span>
+          <span class="history-meta" data-testid="history-item-meta"></span>
+        </li>
+      </template>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
