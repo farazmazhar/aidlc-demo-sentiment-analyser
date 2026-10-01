@@ -16,7 +16,7 @@ from app.config import Settings
 from app.db import connect, init_db
 from app.dummy_client import DummySentimentClient
 from app.openrouter_client import OpenRouterJevSentimentClient
-from app.repository import list_analyses
+from app.repository import list_analyses, list_analyses_by_import_id
 from app.sentiment import SentimentClient, SentimentEngineError, SentimentResult
 from app.service import (
     InvalidTextError,
@@ -24,6 +24,7 @@ from app.service import (
     analyze_text,
     effective_connection,
     get_client,
+    import_texts,
     require_text,
 )
 from app.session_auth import SessionCredential
@@ -68,6 +69,22 @@ class UnsupportedLabelClient:
             model="stub-engine-v9",
             provider="stub-provider",
         )
+
+
+class FailingOnBoomClient:
+    """An engine that fails for a row containing `boom`, else answers offline.
+
+    A hand-written double rather than a mock: the bulk path must skip the failing
+    row while the offline seam still produces the other rows (FR1.4).
+    """
+
+    def __init__(self) -> None:
+        self._offline = DummySentimentClient()
+
+    def analyze(self, text: str) -> SentimentResult:
+        if "boom" in text:
+            raise SentimentEngineError("The sentiment engine could not be reached.")
+        return self._offline.analyze(text)
 
 
 def _row_count(connection) -> int:
@@ -184,6 +201,74 @@ def test_get_client_resolves_the_credential_precedence(tmp_path):
     with pytest.raises(LiveKeyMissingError) as excinfo:
         get_client(requested_without_key)
     assert "config.local.toml" in str(excinfo.value)
+
+
+def test_import_texts_persists_one_group_and_aggregates_the_breakdown(tmp_db_path):
+    """FR1.3, FR1.4, FR1.5: one shared id, blanks skipped, mean over imported rows."""
+    init_db(tmp_db_path)
+    connection = connect(tmp_db_path)
+    try:
+        summary = import_texts(
+            DummySentimentClient(),
+            connection,
+            ["I love this", "", "This is terrible", "Just a sentence"],
+            now=FIXED_NOW,
+        )
+
+        assert summary.imported == 3
+        assert summary.skipped == 1
+        assert summary.label_counts == {"positive": 1, "negative": 1, "neutral": 1}
+        assert summary.mean_confidence == pytest.approx((0.85 + 0.85 + 0.70) / 3)
+        assert summary.import_id
+
+        rows = list_analyses_by_import_id(connection, summary.import_id)
+        assert [record.text for record in rows] == [
+            "Just a sentence",
+            "This is terrible",
+            "I love this",
+        ]
+        assert all(record.import_id == summary.import_id for record in rows)
+    finally:
+        connection.close()
+
+
+def test_import_texts_skips_a_per_row_engine_failure(tmp_db_path):
+    """FR1.4: one failing row does not abort the import; the successes are kept."""
+    init_db(tmp_db_path)
+    connection = connect(tmp_db_path)
+    try:
+        summary = import_texts(
+            FailingOnBoomClient(),
+            connection,
+            ["I love this", "boom row", "Just a sentence"],
+            now=FIXED_NOW,
+        )
+
+        assert summary.imported == 2
+        assert summary.skipped == 1
+        assert summary.label_counts == {"positive": 1, "negative": 0, "neutral": 1}
+        assert summary.mean_confidence == pytest.approx((0.85 + 0.70) / 2)
+
+        rows = list_analyses_by_import_id(connection, summary.import_id)
+        assert [record.text for record in rows] == ["Just a sentence", "I love this"]
+    finally:
+        connection.close()
+
+
+def test_import_texts_with_no_rows_reports_a_null_mean(tmp_db_path):
+    """FR1.6, A3: zero imported rows give a named id, zero counts and a null mean."""
+    init_db(tmp_db_path)
+    connection = connect(tmp_db_path)
+    try:
+        summary = import_texts(DummySentimentClient(), connection, [], now=FIXED_NOW)
+
+        assert summary.import_id
+        assert summary.imported == 0
+        assert summary.skipped == 0
+        assert summary.label_counts == {"positive": 0, "negative": 0, "neutral": 0}
+        assert summary.mean_confidence is None
+    finally:
+        connection.close()
 
 
 def test_effective_connection_is_the_one_connection_payload(tmp_path):

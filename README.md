@@ -147,7 +147,9 @@ step. The directory is gitignored.
 
 Each row holds the input text, the label, the per-label probabilities as a JSON
 object keyed by label, the confidence, the model id, the provider and an ISO 8601
-UTC `created_at`. A row migrated from a store written before the `provider`
+UTC `created_at`. A row written by bulk import also carries the shared
+`import_id` that groups every row of that request; a single analysis stores
+`NULL`. A row migrated from a store written before the `provider`
 column existed has no engine to name: it carries the recorded sentinel
 `"unknown"` (never JSON `null` and never the literal string `"None"`), which keeps
 the record a schema-conformant string so an unknown provider is not confused with
@@ -156,7 +158,8 @@ a real one.
 The schema is versioned in `schema_meta`. On startup an existing store is brought
 to the current shape **in place**: a missing column is added first, then the table
 is rebuilt with the v1 DDL and every row is copied across, so the physical
-constraints (`provider` NOT NULL, `intensity` nullable, the label domain) always
+constraints (`provider` NOT NULL, `intensity` nullable, `import_id` nullable, the
+label domain) always
 match the recorded version. The retired `intensity` attribute is the one such
 change: rows written before it was dropped keep the value they already hold, and
 new rows simply leave it unset — it is never back-filled with an invented number.
@@ -178,6 +181,12 @@ Data routes are versioned under `/v1`; the page, its static assets and the
 | `POST /v1/analyze` when the live engine fails or rejects the key | `503 SENTIMENT_ENGINE_ERROR` / `503 AUTH_EXPIRED` |
 | `GET /v1/analyses?limit=50` | a JSON array of records, newest first (an absent limit means 50) |
 | `GET /v1/analyses?limit=0` / `-1` / `abc` | `422 VALIDATION_FAILED`, never a silent clamp |
+| `POST /v1/analyses/import` | a `text/csv` (or `text/plain`) CSV body, one text per row; an exact `text` first row is a header. `200` with `import_id`, imported/skipped counts, per-label counts and mean confidence; blank or unanalyzable rows are skipped |
+| `POST /v1/analyses/import` with another content type | `422 VALIDATION_FAILED`, nothing stored |
+| `POST /v1/analyses/import` with a body that is not valid UTF-8 CSV | `422 VALIDATION_FAILED`, nothing stored |
+| `GET /v1/analyses/export?import_id=...` | the rows for that import as a `text/csv` attachment, newest first |
+| `GET /v1/analyses/export` with no `import_id` | `422 VALIDATION_FAILED` (the parameter is required) |
+| `GET /v1/analyses/export?import_id=...` for an unknown id | `404 IMPORT_NOT_FOUND` |
 | `GET /v1/health` | `{"mode": "offline"\|"live", "connected": ...}`, plus `"reason"` only when not connected |
 | `GET /auth/status` | the page's connection payload: also `source` (`session`/`config`/`null`) and `model` |
 | `GET /auth/openrouter/start` | `302` to OpenRouter's authorization page with a PKCE challenge |
@@ -206,12 +215,12 @@ Framework-generated errors (an unknown path, a wrong method) keep FastAPI's own
 │   ├── config.py             # Settings + load_settings(), mode resolution, warning
 │   ├── models.py             # AnalyzeRequest + AnalysisRecord (to_dict/from_row)
 │   ├── db.py                 # sqlite3 connection, schema creation, in-place migration
-│   ├── repository.py         # insert_analysis(), list_analyses(), DEFAULT_LIST_LIMIT
+│   ├── repository.py         # insert_analysis(), list_analyses(), list_analyses_by_import_id()
 │   ├── sentiment.py          # LABELS, SentimentResult, SentimentClient, validate_result
 │   ├── dummy_client.py       # offline keyword client, DummySentimentClient (default)
 │   ├── openrouter_client.py  # live Jev client, injected transport, 10 s timeout
 │   ├── session_auth.py       # in-app OpenRouter PKCE flow, in memory only
-│   ├── service.py            # analyze_text(), get_client(), effective_connection()
+│   ├── service.py            # analyze_text(), import_texts(), get_client(), effective_connection()
 │   ├── routes.py             # the page, the `/v1` API, the auth routes, the error envelope
 │   └── static/
 │       ├── index.html        # the page + the connection indicator
@@ -222,7 +231,8 @@ Framework-generated errors (an unknown path, a wrong method) keep FastAPI's own
     ├── test_config.py        ├── test_dummy_client.py
     ├── test_live_client.py   ├── test_service.py
     ├── test_routes.py        ├── test_page.py
-    ├── test_session_auth.py  └── test_auth_routes.py
+    ├── test_bulk_import.py   ├── test_session_auth.py
+    └── test_auth_routes.py
 ```
 
 ## Notes and known limitations

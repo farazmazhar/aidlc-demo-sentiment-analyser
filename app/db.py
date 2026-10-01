@@ -11,6 +11,9 @@ Schema history, recorded in `schema_meta`:
 * version 2 — the v1 contract shape: `provider` present and NOT NULL,
   `intensity` nullable so a new row can leave the retired attribute unset while
   a pre-v1 row keeps the value it already holds (BR3.4, AC7.1.3).
+* version 3 — the bulk-import shape: a nullable `import_id TEXT` groups the rows
+  persisted by one import request and is NULL for single-analysis rows
+  (FR3.1, FR3.3).
 
 Any existing store that is not already exactly the v1 relation is rebuilt with
 the v1 DDL, so the physical constraints — `provider NOT NULL`, `intensity`
@@ -29,10 +32,11 @@ from pathlib import Path
 from app.models import UNKNOWN_PROVIDER
 
 #: Schema version recorded in `schema_meta`; a hook for later migrations.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 #: The v1 physical schema. `intensity` stays for pre-v1 rows but is nullable, so
-#: new rows simply do not set it (BR3.4).
+#: new rows simply do not set it (BR3.4). `import_id` is nullable: it is set only
+#: when a row is written by bulk import (FR3.1).
 CREATE_ANALYSES_TABLE = """
 CREATE TABLE IF NOT EXISTS analyses (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +47,8 @@ CREATE TABLE IF NOT EXISTS analyses (
   intensity     REAL,
   model         TEXT    NOT NULL,
   provider      TEXT    NOT NULL,
-  created_at    TEXT    NOT NULL
+  created_at    TEXT    NOT NULL,
+  import_id     TEXT
 )
 """
 
@@ -65,10 +70,12 @@ ANALYSES_COLUMNS = (
     "model",
     "provider",
     "created_at",
+    "import_id",
 )
 
-#: The columns the v1 DDL declares NOT NULL. The primary key (`id`) and the
-#: retired `intensity` are the only columns allowed to hold NULL.
+#: The columns the v1 DDL declares NOT NULL. The primary key (`id`), the retired
+#: `intensity` and the bulk-import grouping key (`import_id`) are the only columns
+#: allowed to hold NULL.
 _V1_NOT_NULL_COLUMNS = frozenset(
     {"text", "label", "probabilities", "confidence", "model", "provider", "created_at"}
 )
@@ -94,6 +101,7 @@ _ADD_COLUMN_SQL: dict[str, str] = {
     "model": "ALTER TABLE analyses ADD COLUMN model TEXT",
     "provider": "ALTER TABLE analyses ADD COLUMN provider TEXT",
     "created_at": "ALTER TABLE analyses ADD COLUMN created_at TEXT",
+    "import_id": "ALTER TABLE analyses ADD COLUMN import_id TEXT",
 }
 
 _MOVE_OLD_TABLE_ASIDE = "ALTER TABLE analyses RENAME TO analyses_pre_v1"
@@ -105,9 +113,10 @@ _MOVE_OLD_TABLE_ASIDE = "ALTER TABLE analyses RENAME TO analyses_pre_v1"
 #: sentinel travels as a bound parameter.
 _COPY_ROWS_INTO_V1_TABLE = (
     "INSERT INTO analyses "
-    "(id, text, label, probabilities, confidence, intensity, model, provider, created_at) "
+    "(id, text, label, probabilities, confidence, intensity, model, provider, "
+    "created_at, import_id) "
     "SELECT id, text, label, probabilities, confidence, intensity, model, "
-    "COALESCE(provider, ?), created_at FROM analyses_pre_v1"
+    "COALESCE(provider, ?), created_at, import_id FROM analyses_pre_v1"
 )
 
 _DROP_OLD_TABLE = "DROP TABLE analyses_pre_v1"

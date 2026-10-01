@@ -7,24 +7,28 @@ data through the repository. (FR4.1-FR4.7, BR4.1-BR4.4)
 
 The data routes are served under the versioned prefix `/v1` (BR4.2, D3). The
 page's own `/`, its `/static/*` assets and the `/auth/*` support routes carry no
-data contract, so they stay unversioned.
+data contract, so they stay unversioned. The bulk CSV surface (`POST
+/v1/analyses/import`, `GET /v1/analyses/export`) is additive under the same
+router (FR1.1, FR2.1).
 """
 
 from __future__ import annotations
 
+import csv
+import io
 import logging
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import db
 from app.config import Settings
 from app.models import AnalyzeRequest, undeclared_body_fields
-from app.repository import DEFAULT_LIST_LIMIT, list_analyses
+from app.repository import DEFAULT_LIST_LIMIT, list_analyses, list_analyses_by_import_id
 from app.sentiment import SentimentAuthError, SentimentEngineError
 from app.service import (
     InvalidTextError,
@@ -32,6 +36,7 @@ from app.service import (
     analyze_text,
     effective_connection,
     get_client,
+    import_texts,
     require_text,
 )
 from app.session_auth import AuthExchangeError, SessionAuth
@@ -49,6 +54,14 @@ INVALID_TEXT = "INVALID_TEXT"
 LIVE_KEY_MISSING = "LIVE_KEY_MISSING"
 SENTIMENT_ENGINE_ERROR = "SENTIMENT_ENGINE_ERROR"
 AUTH_EXPIRED = "AUTH_EXPIRED"
+IMPORT_NOT_FOUND = "IMPORT_NOT_FOUND"
+
+#: The content types the bulk-import body may use (FR1.7). `text/plain` is
+#: accepted so the same CSV can be posted without a CSV-specific type.
+IMPORT_CONTENT_TYPES = frozenset({"text/csv", "text/plain"})
+
+#: Columns of the bulk-export CSV, pinned by the FR2.2 contract.
+EXPORT_COLUMNS = ("id", "text", "label", "confidence", "model", "provider", "created_at")
 
 logger = logging.getLogger("app.routes")
 
@@ -162,6 +175,98 @@ def get_analyses(
     than clamped (BR3.5, BR3.6, D2).
     """
     return [record.to_dict() for record in list_analyses(connection, limit=limit)]
+
+
+@v1_router.post("/analyses/import")
+def post_analyses_import(
+    request: Request,
+    payload: bytes = Body(default=b""),
+    settings: Settings = Depends(get_settings),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> JSONResponse:
+    """Analyse a CSV body in bulk and report the aggregate (FR1.1-FR1.7).
+
+    The body is CSV with one text per row; an exact `text` first row is a header
+    and is skipped (FR1.2). Rows are analysed sequentially through the same
+    engine seam as single analysis (`get_client` + `analyze_text`), and blank or
+    unanalyzable rows are skipped without aborting the request (FR1.3, FR1.4).
+    The response carries the shared `import_id`, the imported/skipped counts, the
+    per-label breakdown and the mean confidence (FR1.5); zero imported rows are
+    still a `200` with zeros and a null mean (FR1.6). A body that is neither
+    `text/csv` nor `text/plain`, or that cannot be parsed as CSV, is refused
+    through the envelope (FR1.7).
+
+    The raw body arrives as a `bytes` parameter so FastAPI reads it before
+    dispatching to this (sync) handler — the same worker-thread path the
+    single-analysis route uses for its per-request connection.
+    """
+    media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if media_type not in IMPORT_CONTENT_TYPES:
+        return error_response(
+            422,
+            VALIDATION_FAILED,
+            "The request body must use Content-Type text/csv (or text/plain).",
+        )
+
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError:
+        return error_response(422, VALIDATION_FAILED, "The request body must be UTF-8 CSV text.")
+    try:
+        rows = list(csv.reader(io.StringIO(text)))
+    except csv.Error as exc:
+        return error_response(422, VALIDATION_FAILED, f"The request body is not valid CSV: {exc}.")
+
+    if rows and rows[0] == ["text"]:
+        rows = rows[1:]
+    texts = [row[0] if row else "" for row in rows]
+
+    credential = get_session_auth(request).credential()
+    summary = import_texts(get_client(settings, credential), connection, texts)
+    return JSONResponse(status_code=200, content=summary.to_dict())
+
+
+@v1_router.get("/analyses/export")
+def get_analyses_export(
+    import_id: str = Query(...),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> Response:
+    """Return the rows persisted under one `import_id` as a CSV attachment (FR2).
+
+    The columns are pinned by `EXPORT_COLUMNS` and the rows come back newest-first
+    (FR2.2); the response is `text/csv` with an attachment filename (FR2.3). An
+    `import_id` with no matching rows is a `404` through the envelope (FR2.4),
+    the query parameter is required (FR2.5), and rows written by single analysis
+    (null `import_id`) are never included (FR2.6).
+    """
+    records = list_analyses_by_import_id(connection, import_id)
+    if not records:
+        return error_response(
+            404,
+            IMPORT_NOT_FOUND,
+            f"No analyses were found for import_id {import_id!r}.",
+        )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(EXPORT_COLUMNS)
+    for record in records:
+        writer.writerow(
+            [
+                record.id,
+                record.text,
+                record.label,
+                record.confidence,
+                record.model,
+                record.provider,
+                record.created_at,
+            ]
+        )
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="analyses-{import_id}.csv"'},
+    )
 
 
 @v1_router.get("/health")

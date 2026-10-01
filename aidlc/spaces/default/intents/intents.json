@@ -12,5 +12,12 @@
     "dirName": "260930-sentiment-v1",
     "scope": "classic",
     "status": "complete"
+  },
+  {
+    "uuid": "01a0f811-9eff-76c4-be36-1b28c926600f",
+    "slug": "csv-bulk-import",
+    "dirName": "261001-csv-bulk-import",
+    "scope": "express",
+    "status": "complete"
   }
 ]

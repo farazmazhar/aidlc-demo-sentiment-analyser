@@ -21,7 +21,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from typing import Any
 
-#: The exact field set of a returned/stored record (BR3.2, AC2.1.2).
+#: The exact field set of a returned/stored record (BR3.2, AC2.1.2; FR3.2).
 RECORD_FIELDS = (
     "id",
     "text",
@@ -31,6 +31,7 @@ RECORD_FIELDS = (
     "model",
     "provider",
     "created_at",
+    "import_id",
 )
 
 #: The recorded wire value for a row migrated from a store that predates the
@@ -83,6 +84,10 @@ class AnalysisRecord:
     store that predates the column carries `UNKNOWN_PROVIDER` (`"unknown"`) —
     an explicit sentinel the contract records, never a fabricated engine name and
     never the literal string `"None"` (BR3.4, AC7.1.2).
+
+    `import_id` groups the rows persisted by one bulk-import request; it is
+    `None` for a row produced by single analysis (FR3.1, FR3.2). It is additive,
+    so an existing client tolerates the extra nullable field (A6).
     """
 
     id: int
@@ -93,6 +98,7 @@ class AnalysisRecord:
     model: str
     provider: str
     created_at: str
+    import_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return the record as JSON-ready primitives, in the pinned field order."""
@@ -105,6 +111,7 @@ class AnalysisRecord:
             "model": self.model,
             "provider": self.provider,
             "created_at": self.created_at,
+            "import_id": self.import_id,
         }
 
     @classmethod
@@ -116,8 +123,11 @@ class AnalysisRecord:
         being surfaced or back-filled (BR3.4). A missing `provider` — the column
         the in-place migration adds to a store that predates it — becomes the
         recorded `UNKNOWN_PROVIDER` sentinel rather than the string `"None"`.
+        A row written by single analysis carries `import_id = NULL`, read back as
+        `None` (FR3.1).
         """
         provider = row["provider"]
+        import_id = row["import_id"]
         return cls(
             id=int(row["id"]),
             text=str(row["text"]),
@@ -130,4 +140,5 @@ class AnalysisRecord:
             model=str(row["model"]),
             provider=UNKNOWN_PROVIDER if provider is None else str(provider),
             created_at=str(row["created_at"]),
+            import_id=None if import_id is None else str(import_id),
         )

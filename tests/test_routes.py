@@ -23,7 +23,8 @@ from tests.conftest import asgi_request
 
 ISO_8601_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
-#: The contract's record field set: no `intensity` (BR3.4, AC2.1.2).
+#: The contract's record field set: no `intensity` (BR3.4, AC2.1.2); the additive
+#: `import_id` is null for single analyses (FR3.2).
 RECORD_FIELDS = {
     "id",
     "text",
@@ -33,6 +34,7 @@ RECORD_FIELDS = {
     "model",
     "provider",
     "created_at",
+    "import_id",
 }
 
 #: The contract's error envelope: exactly these two keys (BR4.3).
@@ -125,6 +127,7 @@ def test_v1_analyze_returns_the_stored_record_field_set(app, tmp_settings):
     assert response.body["confidence"] == 0.85
     assert response.body["model"] == "dummy-keyword-v1"
     assert response.body["provider"] == "offline"
+    assert response.body["import_id"] is None  # single analysis: additive null (FR3.2)
     assert ISO_8601_UTC.match(response.body["created_at"])
 
     # The same record is what the history route reads back out of SQLite.

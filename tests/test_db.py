@@ -65,6 +65,22 @@ CREATE TABLE analyses (
 )
 """
 
+#: The shape this repository shipped before bulk import: the v2 relation, with
+#: `provider` NOT NULL, `intensity` nullable and no `import_id` column (FR3.3).
+PRE_V3_DDL = """
+CREATE TABLE analyses (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  text          TEXT    NOT NULL,
+  label         TEXT    NOT NULL CHECK (label IN ('positive','negative','neutral')),
+  probabilities TEXT    NOT NULL,
+  confidence    REAL    NOT NULL,
+  intensity     REAL,
+  model         TEXT    NOT NULL,
+  provider      TEXT    NOT NULL,
+  created_at    TEXT    NOT NULL
+)
+"""
+
 _INSERT_PRE_V1_ROW = (
     "INSERT INTO analyses "
     "(text, label, probabilities, confidence, intensity, model, provider, created_at) "
@@ -331,6 +347,60 @@ def test_migration_composes_a_missing_column_and_a_constraint_change(tmp_path):
         assert row["text"] == "a row with both triggers set"
         assert row["intensity"] == 0.6
         assert row["provider"] == UNKNOWN_PROVIDER
+    finally:
+        connection.close()
+
+
+def test_the_v3_schema_has_a_nullable_import_id(tmp_db_path):
+    """FR3.1, FR3.3: a fresh store carries the nullable grouping column at v3."""
+    init_db(tmp_db_path)
+
+    connection = connect(tmp_db_path)
+    try:
+        assert "import_id" in _columns(connection)
+        assert not _not_null(connection, "import_id")
+        version = connection.execute(
+            "SELECT value FROM schema_meta WHERE key = 'version'"
+        ).fetchone()
+        assert version["value"] == str(SCHEMA_VERSION)
+        assert SCHEMA_VERSION == 3
+    finally:
+        connection.close()
+
+
+def test_migration_adds_import_id_to_a_v2_store_and_keeps_its_rows(tmp_path):
+    """FR3.3: an existing v2 store gains the column NULL without losing a row."""
+    db_path = tmp_path / "v2.db"
+    _create_pre_v1_store(
+        db_path,
+        PRE_V3_DDL,
+        "INSERT INTO analyses (text, label, probabilities, confidence, intensity, model, "
+        "provider, created_at) VALUES (?,?,?,?,?,?,?,?)",
+        (
+            "a row written before bulk import",
+            "positive",
+            OLD_PROBABILITIES,
+            0.9,
+            None,
+            "dummy-keyword-v1",
+            "offline",
+            FIXED_CREATED_AT,
+        ),
+    )
+
+    init_db(db_path)
+
+    connection = connect(db_path)
+    try:
+        assert _columns(connection) == ANALYSES_COLUMNS
+        assert not _not_null(connection, "import_id")
+        row = connection.execute("SELECT * FROM analyses WHERE id = 1").fetchone()
+        assert row["text"] == "a row written before bulk import"
+        assert row["import_id"] is None
+        version = connection.execute(
+            "SELECT value FROM schema_meta WHERE key = 'version'"
+        ).fetchone()
+        assert version["value"] == "3"
     finally:
         connection.close()
 

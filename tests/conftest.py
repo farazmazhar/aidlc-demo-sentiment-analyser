@@ -41,15 +41,14 @@ class AsgiResponse(NamedTuple):
         return self.body if isinstance(self.body, str) else ""
 
 
-def _build_scope(method: str, path: str, query: str, body: bytes) -> dict[str, Any]:
+def _build_scope(
+    method: str, path: str, query: str, body: bytes, content_type: str | None
+) -> dict[str, Any]:
     headers = [(b"host", b"testserver")]
+    if content_type is not None:
+        headers.append((b"content-type", content_type.encode("latin-1")))
     if body:
-        headers.extend(
-            [
-                (b"content-type", b"application/json"),
-                (b"content-length", str(len(body)).encode()),
-            ]
-        )
+        headers.append((b"content-length", str(len(body)).encode()))
     return {
         "type": "http",
         "asgi": _ASGI,
@@ -72,9 +71,16 @@ async def _request(
     path: str,
     json_body: Any = None,
     query: str = "",
+    body: bytes | None = None,
+    content_type: str | None = None,
 ) -> AsgiResponse:
-    body = b"" if json_body is None else json.dumps(json_body).encode("utf-8")
-    scope = _build_scope(method, path, query, body)
+    if body is None:
+        if json_body is None:
+            body = b""
+        else:
+            body = json.dumps(json_body).encode("utf-8")
+            content_type = "application/json"
+    scope = _build_scope(method, path, query, body, content_type)
 
     sent = False
 
@@ -116,13 +122,18 @@ def asgi_request(
     path: str,
     json_body: Any = None,
     query: str = "",
+    body: bytes | None = None,
+    content_type: str | None = None,
 ) -> AsgiResponse:
     """Call `application` in-process and return its observable response.
 
     `path` is the bare path; use `query` for the raw query string so tests can
-    send deliberately malformed values such as `limit=abc` (BR3.6).
+    send deliberately malformed values such as `limit=abc` (BR3.6). A JSON body
+    is passed as `json_body`; a raw body (for example the `text/csv` bulk-import
+    payload) is passed as `body` with its `content_type`, so the same harness
+    drives both without adding `httpx`.
     """
-    return asyncio.run(_request(application, method, path, json_body, query))
+    return asyncio.run(_request(application, method, path, json_body, query, body, content_type))
 
 
 @pytest.fixture(scope="session", autouse=True)

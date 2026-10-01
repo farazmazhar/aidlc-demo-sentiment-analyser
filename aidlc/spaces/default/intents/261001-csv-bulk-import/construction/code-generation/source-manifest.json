@@ -1,0 +1,18 @@
+{
+  "stage": "code-generation",
+  "version": 1,
+  "writes": [
+    {"path": "app/models.py"},
+    {"path": "app/db.py"},
+    {"path": "app/repository.py"},
+    {"path": "app/service.py"},
+    {"path": "app/routes.py"},
+    {"path": "tests/conftest.py"},
+    {"path": "tests/test_bulk_import.py"},
+    {"path": "tests/test_db.py"},
+    {"path": "tests/test_repository.py"},
+    {"path": "tests/test_service.py"},
+    {"path": "tests/test_routes.py"},
+    {"path": "README.md"}
+  ]
+}

@@ -12,7 +12,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.db import connect, init_db
-from app.repository import DEFAULT_LIST_LIMIT, insert_analysis, list_analyses
+from app.repository import (
+    DEFAULT_LIST_LIMIT,
+    insert_analysis,
+    list_analyses,
+    list_analyses_by_import_id,
+)
 from app.sentiment import SentimentResult
 
 # Three distinct instants so newest-first ordering is observable.
@@ -69,6 +74,61 @@ def test_insert_returns_the_stored_row_with_every_v1_field(tmp_db_path):
         assert row["probabilities"].startswith('{"positive"')
         # ...and the retired attribute is left unset rather than invented (BR3.4).
         assert row["intensity"] is None
+        # A single analysis carries no bulk grouping key (FR3.1).
+        assert record.import_id is None
+    finally:
+        connection.close()
+
+
+def test_insert_stores_the_import_id_grouping_key(tmp_db_path):
+    """FR1.3, FR3.1: the bulk grouping key is persisted and read back on the record."""
+    init_db(tmp_db_path)
+    connection = connect(tmp_db_path)
+    try:
+        record = insert_analysis(
+            connection,
+            text="bulk row",
+            result=_result(),
+            now=MIDDLE,
+            import_id="import-abc",
+        )
+
+        assert record.import_id == "import-abc"
+        row = connection.execute(
+            "SELECT import_id FROM analyses WHERE id = ?", (record.id,)
+        ).fetchone()
+        assert row["import_id"] == "import-abc"
+
+        single = insert_analysis(connection, text="single row", result=_result(), now=LATEST)
+        assert single.import_id is None
+    finally:
+        connection.close()
+
+
+def test_list_analyses_by_import_id_is_scoped_and_newest_first(tmp_db_path):
+    """FR2.2, FR2.6: only the named group, newest first; an unknown id is empty."""
+    init_db(tmp_db_path)
+    connection = connect(tmp_db_path)
+    try:
+        insert_analysis(
+            connection, text="a first", result=_result(), now=EARLIEST, import_id="group-a"
+        )
+        insert_analysis(
+            connection, text="b only", result=_result(), now=MIDDLE, import_id="group-b"
+        )
+        insert_analysis(
+            connection, text="a second", result=_result(), now=LATEST, import_id="group-a"
+        )
+        insert_analysis(connection, text="single", result=_result(), now=LATEST)
+
+        group_a = list_analyses_by_import_id(connection, "group-a")
+        assert [record.text for record in group_a] == ["a second", "a first"]
+        assert [record.import_id for record in group_a] == ["group-a", "group-a"]
+
+        group_b = list_analyses_by_import_id(connection, "group-b")
+        assert [record.text for record in group_b] == ["b only"]
+
+        assert list_analyses_by_import_id(connection, "missing") == []
     finally:
         connection.close()
 
