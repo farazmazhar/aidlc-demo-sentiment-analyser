@@ -21,7 +21,7 @@
 - **Guard Policy**: relaxed (from scope feature)
 - **Sensors**: on (from scope feature)
 - **Learnings**: on (from scope feature)
-- **Summary Confirmation**: on (from scope feature)
+- **Summary Confirmation**: off (set by you)
 
 ## Workspace State
 - **Project Root**: .
@@ -43,6 +43,8 @@
 - **Construction Verification Command**: python -m pip install -e ".[dev]" && python -m pytest -q && python -c "import threading,time,urllib.request,uvicorn; from app.main import app as a; threading.Thread(target=uvicorn.run, args=(a,), kwargs={'host':'127.0.0.1','port':8141,'log_level':'warning'}, daemon=True).start(); time.sleep(2); print(urllib.request.urlopen('http://127.0.0.1:8141/v1/health').read().decode())"
 
 - **Skeleton Stance**: on
+
+
 
 
 
@@ -107,7 +109,7 @@ Per unit: [TBD]
 - **Current Stage**: functional-design
 - **Next Stage**: nfr-requirements
 - **Status**: Running
-- **Last Updated**: 2026-10-02T19:31:38Z
+- **Last Updated**: 2026-10-02T19:47:48Z
 
 - **Construction Autonomy Mode**: autonomous
 

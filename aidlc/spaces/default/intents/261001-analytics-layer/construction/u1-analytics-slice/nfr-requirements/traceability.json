@@ -1,0 +1,99 @@
+{
+  "stage": "nfr-requirements",
+  "unit": "u1-analytics-slice",
+  "upstream_ids": ["NFR1", "NFR2", "NFR3", "NFR4", "NFR5", "NFR6", "NFR7", "NFR8", "NFR9"],
+  "coverage": [
+    {
+      "id": "NFR1",
+      "status": "OK",
+      "target": "NFR1.1, NFR1.2, NFR1.3, NFR1.4",
+      "note": "Performance: 200 ms over a 10,000-row store on both endpoints; statement count independent of the resolved range's day count; series work range-bounded. The fixture's date span is pinned to 365 distinct UTC days so the measured in-process work is a fixed quantity. Instrument: the FR8.9 fixture and sqlite3 trace hook. NOTE: the concurrency posture is NOT an NFR1.y target — it has no inception NFR parent and is carried separately as a functionally-sourced constraint (FR1.6, BR6.3, FR8.4); see the reverse entry 'Concurrency constraint'."
+    },
+    {
+      "id": "NFR2",
+      "status": "OK",
+      "target": "NFR2.1, NFR2.2, NFR2.3, NFR2.4, NFR2.5, NFR2.6",
+      "note": "Security: unchanged loopback/unauthenticated posture; no new egress; parameter-bound statements; enforced loopback bind; no credential anywhere; privacy/compliance within C-9/C-10/C-11. Instruments that exist now: import/static inspection, the armed offline guard (FR8.5), the startup-enforcement test, the existing redaction assertions and the dependency-cap assertion. The FR7.3 secret scanner does NOT exist yet and is a u4-platform-packaging obligation — recorded as a cross-unit dependency, not as this unit's instrument."
+    },
+    {
+      "id": "NFR3",
+      "status": "OK",
+      "target": "NFR3.1, NFR3.2",
+      "note": "Read-only guarantee: no write, no schema change, no access bookkeeping; no mutating statement in the read path. Instrument: the before/after store comparison (row count, schema, content hash) and the sqlite3 trace hook."
+    },
+    {
+      "id": "NFR4",
+      "status": "OK",
+      "target": "NFR4.1, NFR4.2, NFR4.3, NFR4.4, NFR4.5, NFR4.6, NFR4.7",
+      "note": "Reliability: 422 naming its field; 500 STORAGE_FAILURE distinct from validation; a failure never renders as an empty result; refuse-never-substitute for every null; idempotent additive migration (sourced to FR5.1–FR5.7, not to NFR3/NFR4); per-section graceful degradation; no silent retry. Instruments: the FR8.2 refusal-shape tests, the US8.5.2 500 test, the FR6.7 view tests, the BR5 migration tests and the AC6.5.2 out-of-order test."
+    },
+    {
+      "id": "NFR5",
+      "status": "N/A",
+      "target": "N/A — invariant, not a target",
+      "note": "Compatibility (/v1 freeze, envelope shape, SentimentClient and config convention unchanged). This is an invariant the change must not break, not a target with a measurable value: there is no threshold to derive an NFR5.y from. Mapped to BR4.7 (the /v1 freeze) and verified by the existing suite staying green; recorded here as N/A rather than OK-with-a-non-id-target, with the substantive mapping in the reverse array."
+    },
+    {
+      "id": "NFR6",
+      "status": "N/A",
+      "target": "N/A — invariant, not a target",
+      "note": "Maintainability (module conventions, typed, no third-party validator, no junk-drawer). An invariant of the codebase's own conventions rather than a numeric target; there is no value to sub-number. Mapped to BR2.15 and the tech-stack selections, enforced by the pinned ruff rule set; recorded as N/A with the mapping in the reverse array."
+    },
+    {
+      "id": "NFR7",
+      "status": "N/A",
+      "target": "N/A — invariant, not a target",
+      "note": "Testability (real SQLite and real served markup, never a double of the subject; no browser automation). It constrains how the instruments above are built rather than being a target itself; no NFR7.y value exists. Mapped to BR6.6 and the team testing posture; recorded as N/A with the mapping in the reverse array."
+    },
+    {
+      "id": "NFR8",
+      "status": "OK",
+      "target": "NFR8.1, NFR8.2, NFR8.3",
+      "note": "Observability: a failure reaches the application log through the module logger; the envelope code and the log agree; no request parameter interpolated into statement text and no credential in any log record. Instruments that exist now: the failure-logging test, the BR4.6 inspection and the existing redaction assertions. NOTE: the FR7.3 secret scanner is a u4-platform-packaging dependency, not this unit's instrument."
+    },
+    {
+      "id": "NFR9",
+      "status": "OK",
+      "target": "NFR9.1, NFR9.2, NFR9.3, NFR9.4",
+      "note": "Scalability: series length equals the days in the resolved range; no response grows with the store; the unbounded series is deliberately uncapped; statement count does not grow with the range span. Instruments: the BR3 series-extent tests, the BR2.4/BR2.6 limit tests and the FR8.9 trace hook."
+    }
+  ],
+  "reverse": [
+    {
+      "id": "Concurrency constraint",
+      "status": "N/A",
+      "target": "N/A — functionally-sourced constraint, no inception NFR parent",
+      "note": "The cross-thread concurrency posture (two overlapping requests raise no cross-thread error; BR6.3 requires the test red if thread affinity is reverted). It originates in functional requirements FR1.6, BR6.3 and FR8.4, NOT in any inception NFR — it is deliberately not sub-numbered onto NFR1 or NFR4. Recorded across performance-requirements.md § 'Concurrency posture' and reliability-requirements.md § 'Concurrency — a functionally-sourced constraint carried for traceability'. Instrument: the FR8.4 concurrency test on the replaced harness (FR7.7)."
+    },
+    {
+      "id": "NFR5",
+      "status": "N/A",
+      "target": "BR4.7 (the /v1 freeze, envelope shape and SentimentClient interface unchanged); verified by the existing suite staying green"
+    },
+    {
+      "id": "NFR6",
+      "status": "N/A",
+      "target": "BR2.15 (module conventions: single responsibility, full annotations, stdlib dataclasses, no third-party validator, no new config); enforced by the pinned ruff rule set"
+    },
+    {
+      "id": "NFR7",
+      "status": "N/A",
+      "target": "BR6.6 (tests read real storage and real served markup; offline guard armed; no browser automation)"
+    },
+    {
+      "id": "NFR1.4",
+      "status": "OK",
+      "target": "NFR9.1 (the performance-side mirror of the range-bounded series; labelled so it is not double-counted as a new scalability claim)"
+    },
+    {
+      "id": "NFR2.1",
+      "status": "OK",
+      "target": "C-10 (localhost-only posture; any non-loopback bind or auth change requires a fresh threat model). The /v1 freeze is BR4.7; the unversioned /auth/* suite that proves the posture unchanged is governed by BR6.6, not BR4.7 (which scopes to /v1 only)."
+    },
+    {
+      "id": "NFR4.5",
+      "status": "OK",
+      "target": "FR5.1–FR5.7 (migration integrity — the functional source; NOT NFR3 read-only or NFR4 failure shapes, neither of which states migration integrity). Rules BR5.1–BR5.6."
+    }
+  ]
+}
