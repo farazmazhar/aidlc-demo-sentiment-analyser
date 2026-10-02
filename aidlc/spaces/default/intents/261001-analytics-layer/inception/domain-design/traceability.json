@@ -1,0 +1,320 @@
+{
+  "stage": "domain-design",
+  "upstream_ids": [
+    "US1.1",
+    "US1.2",
+    "US2.1",
+    "US2.2",
+    "US2.3",
+    "US2.4",
+    "US2.5",
+    "US3.1",
+    "US3.2",
+    "US4.1",
+    "US4.2",
+    "US5.1",
+    "US5.2",
+    "US6.1",
+    "US6.2",
+    "US6.3",
+    "US6.4",
+    "US6.5",
+    "US7.1",
+    "US7.2",
+    "US7.3",
+    "US7.4",
+    "US7.5",
+    "US7.6",
+    "US7.7",
+    "US7.8",
+    "US7.9",
+    "US8.1",
+    "US8.2",
+    "US8.3",
+    "US8.4",
+    "US8.5",
+    "US8.6",
+    "US8.7",
+    "US8.8",
+    "US8.9"
+  ],
+  "coverage": [
+    {
+      "id": "US1.1",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "the read module owns every aggregate query; the route holds no SQL. Also names the HTTP API Surface boundary that calls it."
+    },
+    {
+      "id": "US1.2",
+      "status": "OK",
+      "target": "HTTP API Surface",
+      "note": "get_connection owns the R-01 fix and the explicitly documented thread-affinity and lifecycle decision. ADR-006."
+    },
+    {
+      "id": "US2.1",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "AnalyticsSummary (total, counts, shares, mean_confidence, mean_confidence_row_count) is computed here; the HTTP API Surface serialises it."
+    },
+    {
+      "id": "US2.2",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "range resolution is a responsibility of the read module, identical for both endpoints."
+    },
+    {
+      "id": "US2.3",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "AnalyticsSeriesEntry and the in-process zero-fill of internal gaps live here."
+    },
+    {
+      "id": "US2.4",
+      "status": "OK",
+      "target": "AnalyticsRead, HTTP API Surface",
+      "note": "an empty or unmatched range is computed by AnalyticsRead; the 422/500 statuses and the single envelope are owned by the HTTP API Surface."
+    },
+    {
+      "id": "US2.5",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "the read module exposes no mutating operation and records no access bookkeeping; the read-only guarantee is a responsibility of this component."
+    },
+    {
+      "id": "US3.1",
+      "status": "OK",
+      "target": "AnalyticsRead, TermExtraction",
+      "note": "PositiveTermList, NegativeTermList and TermFrequencyEntry are computed here; ranking and the alphabetical tie-break are its responsibility. Term extraction spans both: TermExtraction owns the significant_terms operation that yields the terms, and AnalyticsRead ranks them into the lists."
+    },
+    {
+      "id": "US3.2",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "one range resolution shared by summary and terms is a responsibility of the read module."
+    },
+    {
+      "id": "US4.1",
+      "status": "OK",
+      "target": "TermExtraction",
+      "note": "the significant-terms operation owns the 3-character minimum, the stopword constant and the accepted non-Latin limitation."
+    },
+    {
+      "id": "US4.2",
+      "status": "OK",
+      "target": "TermExtraction, Offline Dummy Engine",
+      "note": "TermExtraction exposes tokenize and filter as two operations; the Offline Dummy Engine calls only tokenize so its scoring is unchanged. ADR-002."
+    },
+    {
+      "id": "US5.1",
+      "status": "OK",
+      "target": "Persistence and Schema",
+      "note": "the additive v3 -> v4 migration, the three named indexes and the TD-1 fix are all inside this component. ADR-004."
+    },
+    {
+      "id": "US6.1",
+      "status": "OK",
+      "target": "Web UI",
+      "note": "the third top-level analytics entry is a new logical region of the existing Web UI component. ADR-007."
+    },
+    {
+      "id": "US6.2",
+      "status": "OK",
+      "target": "Web UI",
+      "note": "the three readouts, the two fetches and the prefix assertion are view responsibilities."
+    },
+    {
+      "id": "US6.3",
+      "status": "OK",
+      "target": "Web UI",
+      "note": "the date-range control, the unbounded default and the absence of import_id/limit controls are view responsibilities."
+    },
+    {
+      "id": "US6.4",
+      "status": "OK",
+      "target": "Web UI",
+      "note": "the inline error state, the 422/500 distinction and the native-element rendering are view responsibilities."
+    },
+    {
+      "id": "US6.5",
+      "status": "OK",
+      "target": "Web UI",
+      "note": "the loading, partial-failure and superseded-response states are view responsibilities."
+    },
+    {
+      "id": "US7.1",
+      "status": "N/A",
+      "note": "lockfile with hashes is a repository-level packaging artifact, not a logical building block. ADR-009 records the routing decision; delivered by Construction/Operation.",
+      "target": "not a runtime component: repository-level packaging. The dependency lockfile is a build/release artifact, not a logical building block; routed to Build and Test (ADR-009)."
+    },
+    {
+      "id": "US7.2",
+      "status": "N/A",
+      "note": "the platform-neutral verification script is repository tooling, not a component of the running system. ADR-009.",
+      "target": "not a runtime component: the platform-neutral verification script is developer tooling, not a building block; routed to Build and Test (ADR-009)."
+    },
+    {
+      "id": "US7.3",
+      "status": "N/A",
+      "note": "secret scanning and dependency audit are repository tooling artifacts, not components. ADR-009.",
+      "target": "not a runtime component: secret scanning and the dependency audit are verification tooling, not building blocks; routed to Build and Test (ADR-009)."
+    },
+    {
+      "id": "US7.4",
+      "status": "N/A",
+      "note": "the LICENSE file is a repository artifact, not a component. ADR-009.",
+      "target": "not a runtime component: the LICENSE file is a repository artifact, not a building block; routed to Build and Test (ADR-009)."
+    },
+    {
+      "id": "US7.5",
+      "status": "N/A",
+      "note": "the ruff TID251 banned-api rule set is lint configuration, not a component; the boundaries it enforces belong to the components but the rule set itself is tooling. ADR-009.",
+      "target": "not a runtime component: the ruff TID251 banned-api entries are lint configuration, not a building block; routed to Build and Test (ADR-009)."
+    },
+    {
+      "id": "US7.6",
+      "status": "OK",
+      "target": "Application Assembly",
+      "note": "loopback-bind enforcement at startup is a responsibility of the composition root. Also touches Configuration and Settings, which owns HOST."
+    },
+    {
+      "id": "US7.7",
+      "status": "OK",
+      "target": "Test Harness and Suite",
+      "note": "FR7.7 replaces the in-process harness with one that can host genuinely concurrent requests; this is a changed component of the repository."
+    },
+    {
+      "id": "US7.8",
+      "status": "N/A",
+      "note": "the ruff target-version setting is lint configuration, not a component. ADR-009.",
+      "target": "not a runtime component: matching ruff target-version to requires-python is lint configuration, not a building block; routed to Build and Test (ADR-009)."
+    },
+    {
+      "id": "US7.9",
+      "status": "N/A",
+      "note": "the README's HTTP surface table, file layout tree and storage section are documentation artifacts, not a component. ADR-009.",
+      "target": "partly a component concern and partly documentation. The README updates are a repository artifact (ADR-009); the surface they describe is HTTP API Surface and Web UI, which are covered by the US2.x, US3.x and US6.x mappings."
+    },
+    {
+      "id": "US8.1",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "the one-grouped-query-per-range shape that makes the statement count independent of range length is a responsibility of the read module; the schema-side performance enabler is The three indexes owned by Persistence and Schema."
+    },
+    {
+      "id": "US8.2",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "no new egress: the read module imports no HTTP client and calls no engine; its only external dependency is the local SQLite connection."
+    },
+    {
+      "id": "US8.3",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "the read module exposes no mutating operation and issues no INSERT/UPDATE/DELETE/DDL; the boundary rule is enforced by the component's dependency edge. Also rests on Persistence and Schema, which owns all DML."
+    },
+    {
+      "id": "US8.4",
+      "status": "OK",
+      "target": "HTTP API Surface",
+      "note": "the distinguishable statuses and machine codes travel through the one envelope owned by this component. Also AnalyticsRead, which refuses an inverted range without computing."
+    },
+    {
+      "id": "US8.5",
+      "status": "OK",
+      "target": "HTTP API Surface",
+      "note": "the /v1 routes, the envelope shape (one new code only) and the v1_router are owned here; the Sentiment Engine Interface gains no member."
+    },
+    {
+      "id": "US8.6",
+      "status": "OK",
+      "target": "AnalyticsRead, TermExtraction",
+      "note": "the two new modules carry the docstring, annotation, from-future-import, underscore-private and UPPER_CASE conventions. Also Configuration and Settings, which adds no analytics config value."
+    },
+    {
+      "id": "US8.7",
+      "status": "OK",
+      "target": "Test Harness and Suite",
+      "note": "real SQLite and real served markup, zero mocks, offline guard armed \u2014 the test component's contract."
+    },
+    {
+      "id": "US8.8",
+      "status": "OK",
+      "target": "AnalyticsRead, HTTP API Surface",
+      "note": "an analytics failure is logged through the module logger; no credential and no interpolated parameter. The failure originates in the read module and is surfaced by the HTTP layer."
+    },
+    {
+      "id": "US8.9",
+      "status": "OK",
+      "target": "AnalyticsRead",
+      "note": "bounded series length, documented unbounded span and limit-bounded term-list size are all properties of the read module's computation."
+    },
+    {
+      "id": "US5.2",
+      "status": "N/A",
+      "target": "merged into US5.1 by the user-stories triage. It carries no ### story heading, but the sensor's US id pattern still reads it from the merge note and from AC5.2.1/AC5.2.2. US5.1's mapping to Persistence and Schema covers both halves, including the index-survival criterion."
+    }
+  ],
+  "reverse": [
+    {
+      "id": "AnalyticsRead",
+      "status": "OK",
+      "target": "US1.1, US2.1, US2.2, US2.3, US2.4, US2.5, US3.1, US3.2, US8.1, US8.2, US8.3, US8.6, US8.8, US8.9"
+    },
+    {
+      "id": "TermExtraction",
+      "status": "OK",
+      "target": "US3.1, US4.1, US4.2, US8.6"
+    },
+    {
+      "id": "HTTP API Surface",
+      "status": "OK",
+      "target": "US1.2, US2.4, US8.4, US8.5, US8.8"
+    },
+    {
+      "id": "Web UI",
+      "status": "OK",
+      "target": "US6.1, US6.2, US6.3, US6.4, US6.5"
+    },
+    {
+      "id": "Persistence and Schema",
+      "status": "OK",
+      "target": "US5.1, US8.1"
+    },
+    {
+      "id": "Offline Dummy Engine",
+      "status": "OK",
+      "target": "US4.2"
+    },
+    {
+      "id": "Application Assembly",
+      "status": "OK",
+      "target": "US7.6"
+    },
+    {
+      "id": "Test Harness and Suite",
+      "status": "OK",
+      "target": "US7.7, US8.7"
+    },
+    {
+      "id": "Configuration and Settings",
+      "status": "OK",
+      "target": "US7.6, US8.6"
+    },
+    {
+      "id": "Record and Request Contracts",
+      "status": "N/A",
+      "target": "declared in the catalogue but no story targets it in this feature; the analytics response shapes were placed under AnalyticsRead (ADR-005) to avoid a fifth hand-maintained contract copy (TD-8)."
+    },
+    {
+      "id": "Sentiment Engine Interface",
+      "status": "OK",
+      "target": "US8.5"
+    },
+    {
+      "id": "Analysis Orchestration",
+      "status": "OK",
+      "target": "US1.1"
+    }
+  ]
+}
