@@ -1,0 +1,26 @@
+## Review
+
+**Verdict:** READY
+**Reviewer:** aidlc-architecture-reviewer-agent
+**Date:** 2026-10-03T00:00:00Z
+**Iteration:** 1
+
+### Findings
+
+| ID | Severity | Location | Finding | Required action | Status |
+|---|---|---|---|---|---|
+| R-01 | Major | aidlc/spaces/default/intents/261001-analytics-layer/construction/u1-analytics-slice/nfr-design/reliability-design.md > §3.1 and §3.5 (the thread-affinity decision) | The safety argument is sound *only while* the connection is short-lived, request-scoped and never cached or shared - and that is exactly what the code shows today (`get_connection` opens, `yield`s to one request, and closes in `finally`; no pool, no global, no `lru_cache`). But the design states the disabling of the same-thread guard as the fix itself and never names the invariant that makes it safe, nor the place it is enforced. A later edit that caches the connection, reuses it across requests, or hands it to a background task would silently convert `check_same_thread=False` from "boundary removed" into "protection removed", and the design gives the next reader no rule to keep. | State the invariant explicitly as part of the decision (`the connection must never outlive its request, be cached, or be shared between concurrent requests`), name the `finally: conn.close()` request boundary as its enforcement, and note the failure mode if it is ever violated. This turns the decision from a justification into a durable constraint. | New |
+| R-02 | Major | aidlc/spaces/default/intents/261001-analytics-layer/construction/u1-analytics-slice/nfr-design/reliability-design.md > §3.1 pseudocode and §3.2 owner table; logical-components.md > §1 LC-2 | The pseudocode shows the flag being passed at `get_connection()` (`conn = sqlite3.connect(path, check_same_thread=False)`), but in the real code `get_connection` does not call `sqlite3.connect` - it delegates to `db.connect(db_path)` (`app/routes.py:94`, `app/db.py:130-142`), and `db.connect` is the only site that calls `sqlite3.connect`. The design simultaneously names `HTTP API Surface`/`get_connection` as the sole connection owner and excludes `db.connect` from that boundary, so Code Generation cannot tell whether to thread a parameter through `db.connect`'s signature or change `db.connect` itself. The design's own claim "the fix lands with the defect" is therefore not actionable as written. | Resolve the ownership question: state whether the flag is added in `db.connect` (the true construction site) or passed as a `db.connect(..., check_same_thread=False)` parameter, and reconcile the owner table and LC-2 with that choice so the fix's location is unambiguous. | New |
+| R-03 | Minor | aidlc/spaces/default/intents/261001-analytics-layer/construction/u1-analytics-slice/nfr-design/security-design.md > §3.2 and reliability-design.md > §2.5 | The three-outcome model is stated cleanly (empty success `200`, validation `422`, storage `500 STORAGE_FAILURE`) and the envelope correctly carries no `field` member, matching the code (`error_response`, `app/routes.py:69-79`) and `rules.md BR4.1`. One gap: `reliability-design.md` §2.5 and `observability-design.md` §3 attribute the partial-failure/out-of-order behaviour to `NFR4.6`/`NFR4.7` as if this unit implements it, while simultaneously noting "the markup behaviour is `u3-analytics-view`'s". The traceability entry for `NFR4.6`/`NFR4.7` does not distinguish "designed by u1" from "delivered by u3". | Add a clause to the `NFR4.6`/`NFR4.7` coverage entries and §2.5 stating which half this unit owns (the classification/refusal shapes) versus which half `u3-analytics-view` owns (the rendering), so the id-level mapping is not read as coverage of code this unit does not write. | New |
+
+### Validation Tool Results
+
+| Tool | Result | Interpretation |
+|---|---|---|
+| required-sections | PASS | Every required H2 heading present across the artifact set. |
+| upstream-coverage | PASS | Deliverables reference each upstream artifact the stage frontmatter declares it consumes. |
+| traceability | PASS | Every `NFRx.y` from this unit's NFR requirements is declared and mapped; 26 coverage entries, all `OK`, no `GAP`; the reverse entries (`NFR5`/`NFR6`/`NFR7` invariant, concurrency constraint) are declared. |
+
+### Summary
+
+Chief concern is the thread-affinity decision: it is factually well-grounded against the real code (the connection genuinely is per-request and never shared), but it states the `check_same_thread=False` change as the fix without recording the request-scoped invariant that makes disabling the guard safe, and its pseudocode places the flag at a call site (`get_connection`) that in the real code does not call `sqlite3.connect` - the true site is `db.connect`. Neither gap changes the verdict: R-01 is genuinely closed for the current lifecycle, the three outcome shapes stay structurally distinguishable (empty `200` vs `422` vs `500 STORAGE_FAILURE`, envelope correctly `{code, message}`), the declared-inapplicable mechanisms are inapplicable with stated reasons, every fenced snippet is ≤6 lines and interface-level, and `logical-components.md` describes real in-unit seams (read module, connection owner, route, migration) rather than invented service boundaries. Recommended for approval with the two Major fixes folded forward.

@@ -1,0 +1,290 @@
+{
+  "stage": "infrastructure-design",
+  "unit": "u1-analytics-slice",
+  "upstream_ids": [
+    "NFR1.1",
+    "NFR1.3",
+    "NFR1",
+    "NFR1.4",
+    "NFR1.2",
+    "NFR2.1",
+    "NFR2.6",
+    "NFR2.3",
+    "NFR2.5",
+    "NFR2.2",
+    "NFR2.4",
+    "NFR2",
+    "NFR3.1",
+    "NFR3",
+    "NFR3.2",
+    "NFR4.5",
+    "NFR4.6",
+    "NFR4.4",
+    "NFR4.3",
+    "NFR4.7",
+    "NFR4.1",
+    "NFR4",
+    "NFR4.2",
+    "NFR5",
+    "NFR6",
+    "NFR7",
+    "NFR8.3",
+    "NFR8.2",
+    "NFR8",
+    "NFR8.1",
+    "NFR9.1",
+    "NFR9.2",
+    "NFR9",
+    "NFR9.3",
+    "NFR9.4"
+  ],
+  "coverage": [
+    {
+      "id": "NFR1",
+      "status": "N/A",
+      "target": "N/A \u2014 request-time performance, no infrastructure dimension. NFR1.1\u2013NFR1.4 (200 ms budget, range-independent statement count, range-bounded series) are satisfied by the read module's single grouped local read and in-process fill (performance-design.md \u00a71\u2013\u00a73). This stage provisions no compute, cache, replica or sizing tier to carry them; the only sizing-shaped quantity is the 10,000-row/365-day test fixture, which is a test instrument, not capacity to provision (infrastructure-specification.md \u00a71 resource sizing, \u00a75 no cache)."
+    },
+    {
+      "id": "NFR2",
+      "status": "OK",
+      "target": "Infrastructure records the two posture-affecting facets: (a) NFR2.4 \u2014 the loopback bind is enforced at startup, the process-exposure boundary, recorded in infrastructure-specification.md \u00a72.1 and \u00a75 (no network boundary provisioned); (b) NFR2.2/NFR2.6 \u2014 no new egress path and no third declared runtime dependency, recorded in infrastructure-specification.md \u00a71 (runtime dependencies capped at two) and \u00a75 (nothing cloud/hosted provisioned). NFR2.1/NFR2.3/NFR2.5 have no infrastructure dimension (auth posture, parameter binding and credential handling are request-time code, and no secret store is provisioned)."
+    },
+    {
+      "id": "NFR3",
+      "status": "OK",
+      "target": "infrastructure-specification.md \u00a73 (no database/cache/queue service provisioned) and \u00a74 (the shared SQLite file is existing infrastructure this unit reads through, not one it creates). The read-only guarantee (NFR3.1/NFR3.2) means this stage provisions no write path, no access-bookkeeping store and no mutating service; the only write to infrastructure is the startup schema migration, which is NFR4.5's concern."
+    },
+    {
+      "id": "NFR4",
+      "status": "OK",
+      "target": "Infrastructure records NFR4.5 (the additive, idempotent, atomic v3 \u2192 v4 migration with three named indexes) in infrastructure-specification.md \u00a72.2 and \u00a73. This is the unit's one genuine infrastructure-relevant change aside from the loopback enforcement: a schema change to the existing local SQLite file, committed whole or rolled back whole at startup. NFR4.1\u2013NFR4.4, NFR4.6 and NFR4.7 have no infrastructure dimension (request-time failure shapes and per-section view degradation); recorded N/A with that justification in the reverse array."
+    },
+    {
+      "id": "NFR5",
+      "status": "N/A",
+      "target": "N/A \u2014 invariant, not a target (no NFR5.y exists). Compatibility (/v1 freeze, envelope shape, SentimentClient interface unchanged) has no provisioned-resource dimension; this stage provisions nothing that could change it, and infrastructure-specification.md \u00a71 records the run path and release artifact unchanged. Substantive mapping is BR4.7."
+    },
+    {
+      "id": "NFR6",
+      "status": "OK",
+      "target": "Infrastructure dimension is the dependency cap: infrastructure-specification.md \u00a71 (runtime dependencies) and \u00a75 (no new runtime dependency) record that C-6's exactly-two-runtime-dependency rule is unchanged by this unit, which is the infrastructure-facing half of maintainability. The remainder of NFR6 (module conventions, no junk-drawer, no new config) has no infrastructure dimension; the deployment surface here is one process and one file."
+    },
+    {
+      "id": "NFR7",
+      "status": "N/A",
+      "target": "N/A \u2014 testability constrains how the instruments are built, not what infrastructure is provisioned. This stage designs no environment tier, no test infrastructure and no runner; the replaced concurrency harness and the test suite run under the existing local install (cicd-pipeline.md \u00a74). Substantive mapping is BR6.6 and the team testing posture."
+    },
+    {
+      "id": "NFR8",
+      "status": "OK",
+      "target": "monitoring-design.md \u00a71\u2013\u00a73: no monitoring tier is designed (C-5/C-6 forbid one; a localhost single-user app has no alerting channel and no monitoring subject), and what stands in its place is the module-logger failure records and the distinguishable error shapes already designed in NFR Design. The infrastructure-facing obligation is the recorded ABSENCE of any metrics/tracing/alerting/dashboard/SLO surface. NFR8.1\u2013NFR8.3 land in the application log, not in a provisioned monitoring resource."
+    },
+    {
+      "id": "NFR9",
+      "status": "N/A",
+      "target": "N/A \u2014 bounded-work scalability, no infrastructure dimension. NFR9.1\u2013NFR9.4 (range-bounded series, limit-bounded payload, deliberately uncapped unbounded series, range-independent statement count) are properties of the read path, satisfied in process with no autoscaler, no replica, no shard and no queue to provision (scalability-design.md \u00a73; infrastructure-specification.md \u00a73 and \u00a75 record every scaling resource as deliberately absent)."
+    },
+    {
+      "id": "NFR1.1",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR1.2",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR1.3",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR1.4",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR2.1",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR2.2",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR2.3",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR2.4",
+      "status": "OK",
+      "target": "OK \u2014 recorded in infrastructure-specification.md \u00a72 as the startup bind enforcement: the run path consumes the host constant and a non-loopback host fails loudly."
+    },
+    {
+      "id": "NFR2.5",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR2.6",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR3.1",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR3.2",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR4.1",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR4.2",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR4.3",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR4.4",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR4.5",
+      "status": "OK",
+      "target": "OK \u2014 recorded in infrastructure-specification.md \u00a72 as the additive, idempotent v3 to v4 migration run in one transaction that rolls back on failure."
+    },
+    {
+      "id": "NFR4.6",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR4.7",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR8.1",
+      "status": "OK",
+      "target": "OK \u2014 no monitoring tier is provisioned; the module-logger failure records stand in, recorded in monitoring-design.md."
+    },
+    {
+      "id": "NFR8.2",
+      "status": "OK",
+      "target": "OK \u2014 no monitoring tier is provisioned; recorded in monitoring-design.md."
+    },
+    {
+      "id": "NFR8.3",
+      "status": "OK",
+      "target": "OK \u2014 no monitoring tier is provisioned; recorded in monitoring-design.md."
+    },
+    {
+      "id": "NFR9.1",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR9.2",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR9.3",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    },
+    {
+      "id": "NFR9.4",
+      "status": "N/A",
+      "target": "no infrastructure dimension. This stage records no infrastructure change for this target; it is designed in nfr-design and built in code-generation, so it is declared with a justification rather than mapped to an invented infrastructure element."
+    }
+  ],
+  "reverse": [
+    {
+      "id": "NFR4.5",
+      "status": "OK",
+      "target": "infrastructure-specification.md \u00a72.2 \u2014 the additive, idempotent, atomic v3 \u2192 v4 migration and the three named indexes, recorded as the unit's schema-level infrastructure change. The only infrastructure-relevant NFR the unit changes at the store level."
+    },
+    {
+      "id": "NFR2.4",
+      "status": "OK",
+      "target": "infrastructure-specification.md \u00a72.1 \u2014 the loopback bind enforced at startup, recorded as the unit's process-exposure-boundary change. The only infrastructure-relevant security NFR the unit changes."
+    },
+    {
+      "id": "NFR1.1, NFR1.2, NFR1.3, NFR1.4",
+      "status": "N/A",
+      "target": "N/A \u2014 request-time performance targets, no provisioned resource. Carried by performance-design.md; infrastructure provisions no cache, pool, replica or compute tier (infrastructure-specification.md \u00a73, \u00a75)."
+    },
+    {
+      "id": "NFR2.1",
+      "status": "N/A",
+      "target": "N/A \u2014 no infrastructure dimension. The auth posture is deliberately unchanged (no auth/authz added) and no auth service, gateway or token store is provisioned; security-design.md \u00a71. The infrastructure-adjacent half of the posture is NFR2.4 (loopback enforcement), mapped above."
+    },
+    {
+      "id": "NFR2.3",
+      "status": "N/A",
+      "target": "N/A \u2014 parameter binding is request-time code (security-design.md \u00a73.1); this stage provisions no database proxy, firewall or query gateway."
+    },
+    {
+      "id": "NFR2.5",
+      "status": "N/A",
+      "target": "N/A \u2014 no infrastructure dimension. No secret store, vault or secrets manager is provisioned and no credential is added (security-design.md \u00a75); the credential rule lives in application code and configuration, not in infrastructure."
+    },
+    {
+      "id": "NFR3.1, NFR3.2",
+      "status": "N/A",
+      "target": "N/A \u2014 the read-only guarantee is a request-time correctness property of a GET (reliability-design.md \u00a71). This stage provisions no write path and no access-bookkeeping store; the only infrastructure write is the startup migration (NFR4.5)."
+    },
+    {
+      "id": "NFR4.1, NFR4.2, NFR4.3, NFR4.4",
+      "status": "N/A",
+      "target": "N/A \u2014 request-time failure shapes (422/500/empty, refuse-never-substitute); no provisioned resource. reliability-design.md \u00a72.2\u2013\u00a72.3."
+    },
+    {
+      "id": "NFR4.6, NFR4.7",
+      "status": "N/A",
+      "target": "N/A \u2014 per-section view degradation and no-silent-retry are view/caller behaviour (reliability-design.md \u00a72.5); no infrastructure dimension."
+    },
+    {
+      "id": "NFR8.1, NFR8.2, NFR8.3",
+      "status": "OK",
+      "target": "monitoring-design.md \u00a73 \u2014 recorded as the stand-in for a monitoring tier: failures reach the application log through the module logger, the envelope code and the log agree, and no credential and no interpolated statement text appears in any log record. The infrastructure-facing statement is that NO monitoring resource (metrics endpoint, exporter, collector, alert route, dashboard, SLO) is provisioned (monitoring-design.md \u00a71\u2013\u00a72)."
+    },
+    {
+      "id": "NFR9.1, NFR9.2, NFR9.3, NFR9.4",
+      "status": "N/A",
+      "target": "N/A \u2014 bounded-work scalability is a read-path property, not a provisioned tier. scalability-design.md \u00a72\u2013\u00a73; infrastructure-specification.md \u00a73 and \u00a75 record every scaling resource (autoscaler, replica, shard, queue, cache, load balancer) as deliberately absent."
+    },
+    {
+      "id": "Concurrency constraint",
+      "status": "N/A",
+      "target": "N/A \u2014 functionally-sourced (FR1.6, BR6.3, FR8.4), no inception NFR parent. It is an in-process connection-lifecycle decision (reliability-design.md \u00a73), not infrastructure; infrastructure-specification.md \u00a74 records the per-request connection as an in-process object, not a provisioned resource."
+    },
+    {
+      "id": "CI/CD pipeline",
+      "status": "N/A",
+      "target": "N/A \u2014 this unit introduces no pipeline. There is no CI and no git remote; the verification script is a u4-platform-packaging deliverable and the CI Pipeline stage owns the territory (cicd-pipeline.md \u00a71\u2013\u00a73). No NFRx.y for this unit has a CI/CD-pipeline dimension."
+    },
+    {
+      "id": "Monitoring tier",
+      "status": "N/A",
+      "target": "N/A \u2014 no monitoring tier is designed or may be added (C-5/C-6); monitoring-design.md \u00a71\u2013\u00a72 records the deliberate absence and \u00a73 records the module-logger stand-in."
+    }
+  ]
+}

@@ -1,0 +1,166 @@
+{
+  "stage": "nfr-design",
+  "unit": "u1-analytics-slice",
+  "upstream_ids": [
+    "NFR1.1", "NFR1.2", "NFR1.3", "NFR1.4",
+    "NFR2.1", "NFR2.2", "NFR2.3", "NFR2.4", "NFR2.5", "NFR2.6",
+    "NFR3.1", "NFR3.2",
+    "NFR4.1", "NFR4.2", "NFR4.3", "NFR4.4", "NFR4.5", "NFR4.6", "NFR4.7",
+    "NFR8.1", "NFR8.2", "NFR8.3",
+    "NFR9.1", "NFR9.2", "NFR9.3", "NFR9.4"
+  ],
+  "coverage": [
+    {
+      "id": "NFR1.1",
+      "status": "OK",
+      "target": "performance-design.md §1 (budget decomposition), §3 (parameter-bound single read); reliability-design.md §1. One grouped local read plus in-process aggregation over the 10,000-row / 365-day fixture; no per-hop budget because there is no hop."
+    },
+    {
+      "id": "NFR1.2",
+      "status": "OK",
+      "target": "performance-design.md §2.1 (single text read + in-process counting/ranking), §3 (limit-bounded term payload); scalability-design.md §2 (term payload bounded by limit)."
+    },
+    {
+      "id": "NFR1.3",
+      "status": "OK",
+      "target": "performance-design.md §2.1 — one grouped read over the range plus an in-process fill; SQL statement count is constant in the number of days (BR3.4). Shared instrument with NFR9.4."
+    },
+    {
+      "id": "NFR1.4",
+      "status": "OK",
+      "target": "performance-design.md §2.2 — series length equals the resolved range's UTC-day count; zero-fill grows the series in memory, bounded by the range not the store. Mirror of NFR9.1."
+    },
+    {
+      "id": "NFR2.1",
+      "status": "OK",
+      "target": "security-design.md §1 — no authentication and no authorization added; loopback-only, unauthenticated posture unchanged and bounded; any posture change requires a fresh threat model."
+    },
+    {
+      "id": "NFR2.2",
+      "status": "OK",
+      "target": "security-design.md §2 — zero-egress invariant: no HTTP client, no socket, no engine call, no credential; enforced by import/static inspection, ruff TID251 banned-api lint entries, and the armed offline guard."
+    },
+    {
+      "id": "NFR2.3",
+      "status": "OK",
+      "target": "security-design.md §3.1 — every statement parameter-bound with ? placeholders; statement text is a compile-time constant; no interpolation or concatenation (BR2.9)."
+    },
+    {
+      "id": "NFR2.4",
+      "status": "OK",
+      "target": "security-design.md §4 — loopback bind enforced at startup; a non-loopback host fails loudly; the HOST constant is what the run path consumes (BR6.5, FR7.6). Closes threat T5."
+    },
+    {
+      "id": "NFR2.5",
+      "status": "OK",
+      "target": "security-design.md §5 — no credential added anywhere; live-mode credentials never reach the analytics path; no credential field in any response schema. The FR7.3 secret scanner is recorded as a u4-platform-packaging dependency, NOT as this unit's instrument (honest per review-01 R-02); current instruments are the redaction assertions, schema inspection, armed offline guard and dependency-cap assertion."
+    },
+    {
+      "id": "NFR2.6",
+      "status": "OK",
+      "target": "security-design.md §6 — compliance within C-9/C-10/C-11; no new egress, loopback enforced, no credential committed/logged/printed/pasted; declared runtime dependency list unchanged, proven by the dependency-cap assertion."
+    },
+    {
+      "id": "NFR3.1",
+      "status": "OK",
+      "target": "reliability-design.md §1 — read-only guarantee: both endpoints are GET, no write, no schema change, no access bookkeeping; before/after store comparison (row count, schema, content hash) as instrument."
+    },
+    {
+      "id": "NFR3.2",
+      "status": "OK",
+      "target": "reliability-design.md §1 — no mutating operation in the read path (no INSERT/UPDATE/DELETE, no DDL, no state-changing PRAGMA); all aggregates in the read module (BR2.10); sqlite3 trace hook as instrument."
+    },
+    {
+      "id": "NFR4.1",
+      "status": "OK",
+      "target": "reliability-design.md §2.2; security-design.md §3.2 — malformed parameter yields 422 naming its own field in the message text; inverted range names both query.from and query.to; nothing is computed; no silent default or clamp."
+    },
+    {
+      "id": "NFR4.2",
+      "status": "OK",
+      "target": "reliability-design.md §2.2 — a storage failure is 500 STORAGE_FAILURE, a machine code distinct from every validation code; never mistaken for a malformed parameter (BR4.5)."
+    },
+    {
+      "id": "NFR4.3",
+      "status": "OK",
+      "target": "reliability-design.md §2.1/§2.2; performance-design.md §2.3 — three structurally distinct outcomes (empty success, validation failure, storage failure); a failure never renders as a plausible-looking empty result."
+    },
+    {
+      "id": "NFR4.4",
+      "status": "OK",
+      "target": "reliability-design.md §2.3 — refuse-never-substitute governs every null: share null on a 0 denominator, mean null with no inputs, an empty label yields an empty list; never a fabricated 0.0, never null-as-empty, never a padded list."
+    },
+    {
+      "id": "NFR4.5",
+      "status": "OK",
+      "target": "reliability-design.md §4 — additive, idempotent v3->v4 migration that preserves every row; three named indexes re-created explicitly after the rebuild (TD-1 fix); version bumped in the same transaction; a step that cannot preserve rows rolls back and re-raises so startup halts loudly. Functional source FR5.1–FR5.7."
+    },
+    {
+      "id": "NFR4.6",
+      "status": "OK",
+      "target": "reliability-design.md §2.5 — per-section graceful degradation: a failed section renders in place, a partial success shows the succeeded section plus a distinct partial-failure marker; loading/empty/error stay distinct regions."
+    },
+    {
+      "id": "NFR4.7",
+      "status": "OK",
+      "target": "reliability-design.md §2.5 — no silent retry; a failure is surfaced rather than auto-retried; an out-of-order late response from a superseded range is discarded."
+    },
+    {
+      "id": "NFR8.1",
+      "status": "OK",
+      "target": "observability-design.md §2 — every analytics failure is logged through the module logger as a record; never swallowed; never print()."
+    },
+    {
+      "id": "NFR8.2",
+      "status": "OK",
+      "target": "observability-design.md §2/§4 — the envelope machine code travels on the wire AND appears in the application log, so the wire surface and the log agree; the code stays in the log and off-screen."
+    },
+    {
+      "id": "NFR8.3",
+      "status": "OK",
+      "target": "observability-design.md §2; security-design.md §2 — no parameter interpolated into statement text and no credential in any log record. Same rule as NFR2.3 seen from the log side. The FR7.3 scanner is a u4-platform-packaging dependency, not this unit's instrument; current instruments are code inspection and the existing redaction assertions."
+    },
+    {
+      "id": "NFR9.1",
+      "status": "OK",
+      "target": "scalability-design.md §2 (series length equals resolved-range day count); performance-design.md §2.2 — one entry per UTC day of the resolved range, ascending/continuous/zero-filled; empty range yields an empty series."
+    },
+    {
+      "id": "NFR9.2",
+      "status": "OK",
+      "target": "scalability-design.md §2 — no response grows with the store: the terms payload materialises at most limit entries per list; a bounded range bounds the series."
+    },
+    {
+      "id": "NFR9.3",
+      "status": "OK",
+      "target": "scalability-design.md §2 (row 3) and §4 — the unbounded series is deliberately uncapped; the design records that cost is bounded (one grouped read + in-process fill) while length is not, and adds no cap (a policy question for a future scope)."
+    },
+    {
+      "id": "NFR9.4",
+      "status": "OK",
+      "target": "scalability-design.md §2 (row 4) — statement count does not grow with the range span; one grouped read plus an in-process fill (BR3.4). Shared instrument with NFR1.3."
+    }
+  ],
+  "reverse": [
+    {
+      "id": "NFR5",
+      "status": "N/A",
+      "target": "N/A — invariant, not a target (no NFR5.y exists). Compatibility: /v1 freeze, envelope shape and SentimentClient interface unchanged. Enforced by the design's boundary discipline (logical-components.md §4) and verified by the existing suite staying green; the substantive mapping is BR4.7 (the /v1 freeze)."
+    },
+    {
+      "id": "NFR6",
+      "status": "N/A",
+      "target": "N/A — invariant, not a target (no NFR6.y exists). Maintainability: module conventions, full annotations, stdlib shapes, no third-party validator, no junk-drawer, no new config. Carried by logical-components.md §4 (module conventions, machine-checked boundaries); mapping is BR2.15 and the pinned ruff rule set."
+    },
+    {
+      "id": "NFR7",
+      "status": "N/A",
+      "target": "N/A — invariant, not a target (no NFR7.y exists). Testability: tests read real storage and real served markup, offline guard armed, no browser automation. It constrains how the instruments named above are built; mapping is BR6.6 and the team testing posture."
+    },
+    {
+      "id": "Concurrency constraint",
+      "status": "OK",
+      "target": "reliability-design.md §3 — the connection model and the explicit thread-affinity decision (check_same_thread=False, per-request short-lived connection, ownership at the HTTP edge). Functionally sourced (FR1.6, BR6.3, FR8.4); NO inception NFR parent, so it is deliberately NOT sub-numbered onto NFR1 or NFR4 (the mis-parenting corrected at nfr-requirements review-01 R-01). Instrument: the FR8.4 concurrency test on the replaced harness (FR7.7), which must go red if the decision is reverted (BR6.3)."
+    }
+  ]
+}
