@@ -19,5 +19,12 @@
     "dirName": "261001-csv-bulk-import",
     "scope": "express",
     "status": "complete"
+  },
+  {
+    "uuid": "01a0f89d-b248-754d-8ff4-8caf55e1a686",
+    "slug": "analytics-layer",
+    "dirName": "261001-analytics-layer",
+    "scope": "feature",
+    "status": "in-flight"
   }
 ]

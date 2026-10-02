@@ -1,9 +1,13 @@
-# Team-Level Rules
+# Team Practices — sentiment-opencode
 
-> This team's affirmed practices and corrections. Loaded after `org.md` as
-> strict-additive guidance; contradictions with broader policy are rejected.
-> Populated by the practices-discovery affirmation gate. Edit at the gate,
-> not directly.
+> **Integrated at Step 5 for intent `261001-analytics-layer`.** This is the lead's
+> final integration of the three blind support reviews with the fourteen recorded
+> answers in `practices-discovery-questions.md`. **The interview wins** wherever a
+> spoke's position and an answer disagree. Our affirmed baseline in
+> `aidlc/spaces/default/memory/team.md` is carried forward and checked against a
+> fresh full rescan of the repository at `beeb587`; where our own baseline is now
+> factually wrong, this says so and gives the evidence instead of repeating it.
+> Evidence lines are in `evidence.md`. Nothing here is affirmed until the gate.
 
 ## Way of Working
 
@@ -293,10 +297,6 @@ path**. The README records it as a single copy-paste line that installs, runs th
 suite with the floor applied, boots uvicorn on `127.0.0.1:8141` and reads
 `/v1/health`. Still necessary: the suite never starts a server and never resolves
 `uvicorn app:app`.
-
-## Guard Policy
-
-<!-- Affirmed by the team. Mode: strict, relaxed, or off. Strict here holds for every intent and cannot be changed from chat. A section under the retired Change Control heading, written by an earlier release, is still read. -->
 
 ## Deployment
 
@@ -695,14 +695,4 @@ line-coverage floor, and the pinned `ruff` rule set — plus, now, `TID251`
 nor a provider CI job. What does **not** exist is worth stating in the same breath:
 no CI, no pre-commit hook, no secret scanner, no dependency audit, no SAST and no
 DAST. An unrun gate is not a gate; a documented default is not enforcement. Both
-sentences have been load-bearing in this project and both still are.## Forbidden
-
-<!-- Team-specific forbidden patterns -->
-
-## Mandated
-
-<!-- Team-specific mandates -->
-
-## Corrections
-
-<!-- Self-learning loop appends here. -->
+sentences have been load-bearing in this project and both still are.
