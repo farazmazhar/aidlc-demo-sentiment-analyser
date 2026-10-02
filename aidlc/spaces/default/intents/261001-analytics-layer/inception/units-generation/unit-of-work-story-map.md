@@ -52,7 +52,7 @@
 | `US7.6` | A server that refuses to leave the loopback | U1 | `u1-analytics-slice` | Loopback-bind enforcement at startup, in `Application Assembly` (a runtime component, not packaging). |
 | `US7.7` | A test harness that can host concurrency | U1 | `u1-analytics-slice` | The replaced ASGI harness lands with the slice so the R-01 concurrency test can run; it is a prerequisite of `US1.2`. **Decided here: the harness work lands in U1, not U4.** |
 | `US7.8` | Static analysis aimed at the Python we run | U4 | `u4-platform-packaging` | `ruff target-version` matched to `requires-python`. |
-| `US7.9` | Documentation that matches the code | U4 | `u4-platform-packaging` | README updates. Cross-cutting content: describes the U1 `/v2` surface and the U3 view; story-level dependency on `US2.1`, `US3.1`, `US6.1`, carried as content, not as a DAG edge (Q6). |
+| `US7.9` | Documentation that matches the code | U4 | `u4-platform-packaging` | README updates. Cross-cutting content: describes the new `/v2` surface and the new view; story-level dependency on `US2.1`, `US3.1`, `US6.1`, carried as content, not as a DAG edge (Q6). |
 | `US8.1` | Answers inside the performance budget | U1 | `u1-analytics-slice` | 10,000-row budget and constant statement count, verified by U1's tests. |
 | `US8.2` | No new way for data to leave | U1 | `u1-analytics-slice` | Cross-cutting: also holds for U2's leaf module; declared target is U1. |
 | `US8.3` | A read that cannot mutate | U1 | `u1-analytics-slice` | Read-only surface + lint boundary (U4's rule set). Cross-cutting with U4's `TID251`. |
@@ -72,7 +72,7 @@ single-valued; the cross-unit reach is recorded here.
 | Story | Declared target | Also reaches | Why |
 |---|---|---|---|
 | `US6.2` | U1 | U3 | **`US6.2` is split by deliverable part.** `AC6.2.1` requires containers for the series, the label breakdown **and both term lists**. U1 delivers the series + breakdown summary region (the slice, and the declared target); U3 delivers the two term-list containers that live in the full view. Neither unit alone satisfies `AC6.2.1`; both rows ship the story. |
-| `US7.9` | U4 | U1, U3 | The README's contract-of-record table and file tree describe the `/v2` surface and the view. Content dependency, not a DAG edge. |
+| `US7.9` | `u4-platform-packaging` | the analytics slice and the view | The README's contract-of-record table and file tree describe the `/v2` surface and the view. Content dependency, not a DAG edge. |
 | `US8.2` | U1 | U2 | "No new egress" holds for the leaf module too; the declared target is the primary new module set. |
 | `US8.3` | U1 | U4 | The read-only guarantee is behavioural (U1) and lint-enforced as an import boundary (`TID251`, U4). |
 | `US8.6` | U1 | U2 | The module conventions apply to both new modules; the declared target is the larger new module. |
@@ -125,14 +125,14 @@ table; its declared target remains U1. Breakdown by story group:
 | US3 | `US3.1`, `US3.2` | U1 |
 | US4 | `US4.1`, `US4.2` | U2 |
 | US5 | `US5.1` + merged `US5.2` | U1 |
-| US6 | `US6.1`–`US6.5` (5) | `US6.2` → U1 (declared; also reaches U3); `US6.1`, `US6.3`, `US6.4`, `US6.5` → U3 |
-| US7 | `US7.1`–`US7.9` (9) | `US7.1`–`US7.5`, `US7.8`, `US7.9` → U4; `US7.6`, `US7.7` → U1 |
+| US6 | `US6.1`–`US6.5` (5) | `US6.2` (declared target, also reaches `u3-analytics-view`); the rest target `u3-analytics-view` |
+| US7 | `US7.1`–`US7.9` (9) | `US7.6` and `US7.7` target `u1-analytics-slice`; the remaining seven target `u4-platform-packaging` |
 | US8 | `US8.1`–`US8.9` (9) | U1 |
 | **Total** | **36 ids (35 headings + `US5.2`)** | 4 units |
 
 **Count per unit (by declared target).**
 
-| Unit | Story count | Stories (declared target) |
+| Unit | Story count | Stories (declared target) — one unit per row, so a line-level reader cannot cross-assign |
 |---|---|---|
 | U1 `u1-analytics-slice` | 23 | US1.1, US1.2, US2.1–US2.5, US3.1, US3.2, US5.1, US5.2, US6.2, US7.6, US7.7, US8.1–US8.9 |
 | U2 `u2-term-extraction` | 2 | US4.1, US4.2 |
