@@ -5,7 +5,13 @@ typed sentiment label (`positive`, `negative`, `neutral`) with a confidence and
 the per-label probabilities. It runs on localhost only, stores its history in a
 single SQLite file, and is **fully offline by default**.
 
-The HTTP data surface is versioned at `/v1`.
+It also answers two read-only **analytics** questions over the same history: how
+the stored sentiment breaks down over a date range, and which terms dominate it.
+Both are served from `/v2`; the original surface at `/v1` is unchanged and
+additive changes only.
+
+The HTTP data surface is versioned: `/v1` for the original routes, `/v2` for the
+analytics routes added later.
 
 ## Prerequisites
 
@@ -42,11 +48,19 @@ outbound only when live mode is active; it lives either in the gitignored
 `config.local.toml` or in the server process's memory after the in-app sign-in,
 and it is never written to disk, logged or returned in a response body.
 
-The page shows an OpenRouter connection indicator in its top-left corner:
+The page shows an OpenRouter connection indicator in its header:
 **red** means the app is running the offline engine, **green** means it is
 talking to OpenRouter. The state is also written in words and announced through a
 live region, so colour is never the only signal. Clicking it connects or
 disconnects.
+
+The header also carries a three-link nav — **Analyse**, **Summary**, **Terms** —
+with `aria-current` on the active section. **Summary** and **Terms** read the
+`/v2` analytics endpoints and render the result: totals, mean confidence, a
+per-day series drawn as an SVG polyline with the values also present as text, and
+a per-label breakdown with shares, in separate regions for "nothing matched" and
+for a failed fetch. Every value reaches the DOM through `textContent`, so no
+stored text is ever parsed as markup.
 
 ## Test it, lint it
 
@@ -155,21 +169,31 @@ column existed has no engine to name: it carries the recorded sentinel
 the record a schema-conformant string so an unknown provider is not confused with
 a real one.
 
-The schema is versioned in `schema_meta`. On startup an existing store is brought
-to the current shape **in place**: a missing column is added first, then the table
-is rebuilt with the v1 DDL and every row is copied across, so the physical
-constraints (`provider` NOT NULL, `intensity` nullable, `import_id` nullable, the
-label domain) always
-match the recorded version. The retired `intensity` attribute is the one such
-change: rows written before it was dropped keep the value they already hold, and
-new rows simply leave it unset — it is never back-filled with an invented number.
-A migration that cannot preserve every row fails loudly and rolls back rather than
-discarding data.
+The schema is versioned in `schema_meta` and is currently **v4**. On startup an
+existing store is brought to the current shape **in place**: a missing column is
+added first, then the table is rebuilt with the v1 DDL and every row is copied
+across, so the physical constraints (`provider` NOT NULL, `intensity` nullable,
+`import_id` nullable, the label domain) always match the recorded version. The
+retired `intensity` attribute is the one such change: rows written before it was
+dropped keep the value they already hold, and new rows simply leave it unset — it
+is never back-filled with an invented number. A migration that cannot preserve
+every row fails loudly and rolls back rather than discarding data.
+
+Rebuilding a table drops its indexes, and SQLite's `CREATE TABLE` cannot declare
+one, so v4 re-creates all three as explicit statements after the copy:
+`idx_analyses_created_at`, `idx_analyses_import_id` and
+`idx_analyses_label_created_at`. The step is additive and idempotent: running it
+again on a current store changes nothing, not even the file's modification time.
+
+A fresh store is around 32 KB and grows by roughly 266 bytes per row.
 
 ## HTTP surface
 
-Data routes are versioned under `/v1`; the page, its static assets and the
-`/auth/*` support routes are unversioned because they carry no data contract.
+Data routes are versioned: `/v1` carries the original surface and `/v2` the
+analytics routes. The page, its static assets and the `/auth/*` support routes
+are unversioned because they carry no data contract.
+
+### `/v1` — the original surface
 
 | Route | Behaviour |
 |---|---|
@@ -193,6 +217,41 @@ Data routes are versioned under `/v1`; the page, its static assets and the
 | `GET /auth/callback?code=...` | exchanges the code, keeps the key in memory, redirects back to `/` |
 | `POST /auth/disconnect` | forgets the session credential and returns the offline engine |
 
+### `/v2` — analytics
+
+Both routes are read-only. They never write to the store, and a read is proved
+not to mutate anything by comparing the row count, the schema text and a content
+hash before and after.
+
+| Route | Behaviour |
+|---|---|
+| `GET /v2/analytics/summary` | totals, per-label counts and shares, mean confidence with its row count, and a per-day series |
+| `GET /v2/analytics/terms` | the top terms per label; `limit` defaults to 10, ties break alphabetically |
+| `GET /v2/analytics/*` with `from` later than `to` | `422 VALIDATION_FAILED`, naming both `query.from` and `query.to` |
+| `GET /v2/analytics/*` with a date that is not `YYYY-MM-DD`, or not a real calendar date | `422 VALIDATION_FAILED`, naming the parameter |
+| `GET /v2/analytics/terms?limit=0` / `abc` / a negative value | `422 VALIDATION_FAILED`, never a silent clamp |
+| `GET /v2/analytics/*` with an `import_id` that matches nothing | `200` with an empty result, not a `404` — an unknown id is a valid question with no answer |
+| any `/v2` route when the store cannot be read | `500 STORAGE_FAILURE`, logged with its code and distinct from every validation code |
+
+Query parameters on both routes: `from`, `to`, `import_id`, and `limit` (terms
+only). Dates are **inclusive UTC calendar days** and are written `YYYY-MM-DD`. A
+single bound is never dropped, so `from` alone means "from that day onward". With
+neither bound the span runs from the earliest stored analysis through today.
+
+Three range behaviours worth knowing, because they differ:
+
+- **An empty range returns an empty series** — not a series of zeros. If nothing
+  matched, there is nothing to plot.
+- **Zero-fill covers only the interior.** When a range *does* match rows, days
+  inside it with no rows are emitted as zero entries, so the series has one entry
+  per day and a gap in the line means a real gap.
+- **A `shares` value is `null` when its denominator is zero**, never `0` — no rows
+  is a different fact from zero rows.
+
+Each analytics read issues exactly **one** `SELECT`, whatever the range width: the
+per-day and per-label figures come from one grouped statement and the series is
+grown in memory from it.
+
 Every non-2xx response the application itself raises uses one envelope:
 
 ```json
@@ -211,28 +270,34 @@ Framework-generated errors (an unknown path, a wrong method) keep FastAPI's own
 ├── config.local.toml         # gitignored; your key and mode
 ├── app/
 │   ├── __init__.py           # re-exports `app` so `uvicorn app:app` resolves
-│   ├── main.py               # create_app() factory, lifespan, HOST bind
+│   ├── main.py               # create_app() factory, lifespan, enforced loopback bind
 │   ├── config.py             # Settings + load_settings(), mode resolution, warning
-│   ├── models.py             # AnalyzeRequest + AnalysisRecord (to_dict/from_row)
-│   ├── db.py                 # sqlite3 connection, schema creation, in-place migration
+│   ├── models.py             # AnalyzeRequest, AnalysisRecord, the four analytics dataclasses
+│   ├── db.py                 # sqlite3 connection, schema v4, in-place migration, indexes
 │   ├── repository.py         # insert_analysis(), list_analyses(), list_analyses_by_import_id()
+│   ├── analytics.py          # AnalyticsRead: range resolution, aggregates, series, ranking
+│   ├── terms.py              # tokenize() + significant_terms(); shared by engine and analytics
 │   ├── sentiment.py          # LABELS, SentimentResult, SentimentClient, validate_result
 │   ├── dummy_client.py       # offline keyword client, DummySentimentClient (default)
 │   ├── openrouter_client.py  # live Jev client, injected transport, 10 s timeout
 │   ├── session_auth.py       # in-app OpenRouter PKCE flow, in memory only
 │   ├── service.py            # analyze_text(), import_texts(), get_client(), effective_connection()
-│   ├── routes.py             # the page, the `/v1` API, the auth routes, the error envelope
+│   ├── routes.py             # the page, the `/v1` API, the `/v2` analytics API, the auth routes
 │   └── static/
-│       ├── index.html        # the page + the connection indicator
-│       └── app.js            # `/v1` fetch calls, rendering, history, indicator
+│       ├── index.html        # header, nav, the analyse / summary / terms sections
+│       └── app.js            # `/v1` + `/v2` fetch calls, rendering, history, indicator
 └── tests/
-    ├── conftest.py           # in-process ASGI harness, offline guard, tmp settings
+    ├── conftest.py           # ASGI harness, concurrency helper, offline guard, tmp settings
     ├── test_db.py            ├── test_repository.py
     ├── test_config.py        ├── test_dummy_client.py
     ├── test_live_client.py   ├── test_service.py
     ├── test_routes.py        ├── test_page.py
     ├── test_bulk_import.py   ├── test_session_auth.py
-    └── test_auth_routes.py
+    ├── test_auth_routes.py
+    ├── test_analytics_read.py    # range resolution, aggregates, ranking, latency budget
+    ├── test_analytics_routes.py  # the /v2 acceptance and API tests
+    ├── test_migration_indexes.py  # the additive migration and its three indexes
+    └── test_terms.py             # tokeniser parity
 ```
 
 ## Notes and known limitations
@@ -244,13 +309,32 @@ Framework-generated errors (an unknown path, a wrong method) keep FastAPI's own
   transport is injected, so the request it builds and the typed answer it reads
   are asserted directly, including the unreadable-answer and
   provider-rejected-credential failures.
-- **Known limitation (accepted for v1).** A per-request SQLite connection is
-  created in one anyio worker thread and closed in another when requests
-  overlap, which raises `sqlite3.ProgrammingError` and answers `500`. Sequential
-  use — one request at a time, which is what the tests and the verification
-  command exercise — is unaffected. No concurrency target is defined for v1 and
-  the fix is deliberately out of scope; it is recorded here rather than left to
-  be rediscovered.
+- **Overlapping requests are supported.** A per-request SQLite connection is
+  opened with same-thread checking off and closed in that same request, so a
+  connection may legitimately be used and closed on a different worker thread.
+  This was a known v1 limitation that raised `sqlite3.ProgrammingError` and
+  answered `500` whenever two requests overlapped; it is fixed, and the test that
+  proves it goes red when the flag is restored.
+- **Concurrency is correct but not cheap.** Per-request CPU grows faster than
+  linearly with the number of simultaneous clients: the same 240 requests cost
+  2.8 CPU-seconds at one client and about 14.9 at thirty-two, and throughput
+  peaks at two clients and then falls. Measured against a control route that
+  stayed flat, so it is the analytics read path and not the test harness. A
+  single-user localhost app has no reason to care today; a concurrent consumer
+  would.
+- **The analytics payload grows with the range you ask for.** A century-wide
+  `from`/`to` returns roughly 7 MB and 36 500 series entries. Nothing bounds it,
+  because the contract sets no bound. `/v2/analytics/terms` is unaffected.
+- **`/v1/analyses/export` is a view of one import, not a backup.** It requires an
+  `import_id`, excludes every row whose `import_id` is `NULL` — which is every row
+  created by a single analysis — and omits the `probabilities` and `intensity`
+  columns. It cannot serve as a copy of the store.
+- **`data/sentiment.db` is not backed up.** The directory is gitignored and no
+  commit has ever contained it, so the file on disk is the only copy. Copy it
+  yourself if the history matters.
+- **The loopback bind is enforced on the documented run path, not on the
+  process.** `resolve_bind_host` refuses a non-loopback host at startup, but
+  `uvicorn --host` on the command line bypasses that check.
 
 ## Verify it end to end
 
@@ -264,3 +348,9 @@ app on loopback and reads its health payload. It prints, for a fresh checkout:
 ```json
 {"mode": "offline", "connected": false, "reason": "Not connected to OpenRouter."}
 ```
+
+**On an externally-managed interpreter** — Arch, Debian's `python3`, any PEP 668
+environment — the first step exits 1 with `error: externally-managed-environment`
+and the rest never runs. Use the venv form from [Setup](#setup) instead, or pass
+`--break-system-packages` if you accept the risk to your interpreter. The test
+and boot steps pass unchanged either way.
