@@ -351,8 +351,13 @@ def test_migration_composes_a_missing_column_and_a_constraint_change(tmp_path):
         connection.close()
 
 
-def test_the_v3_schema_has_a_nullable_import_id(tmp_db_path):
-    """FR3.1, FR3.3: a fresh store carries the nullable grouping column at v3."""
+def test_the_current_schema_has_a_nullable_import_id(tmp_db_path):
+    """FR3.1, FR3.3: a fresh store carries the nullable grouping column.
+
+    The pinned literal moved from 3 to 4 with the additive analytics-index step,
+    which changes no column: the grouping column `import_id` was added at v3 and
+    is still the same nullable `TEXT` at v4 (FR5.1, BR5.1).
+    """
     init_db(tmp_db_path)
 
     connection = connect(tmp_db_path)
@@ -363,7 +368,7 @@ def test_the_v3_schema_has_a_nullable_import_id(tmp_db_path):
             "SELECT value FROM schema_meta WHERE key = 'version'"
         ).fetchone()
         assert version["value"] == str(SCHEMA_VERSION)
-        assert SCHEMA_VERSION == 3
+        assert SCHEMA_VERSION == 4
     finally:
         connection.close()
 
@@ -400,7 +405,9 @@ def test_migration_adds_import_id_to_a_v2_store_and_keeps_its_rows(tmp_path):
         version = connection.execute(
             "SELECT value FROM schema_meta WHERE key = 'version'"
         ).fetchone()
-        assert version["value"] == "3"
+        # The store reads the current version, not the one it was written at: the
+        # additive step from there changes no column (FR3.3, FR5.1).
+        assert version["value"] == str(SCHEMA_VERSION)
     finally:
         connection.close()
 

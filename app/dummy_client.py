@@ -7,9 +7,8 @@ the whole test suite run offline by default. (FR2.1, FR2.2, FR2.3, NFR1)
 
 from __future__ import annotations
 
-import re
-
 from app.sentiment import SentimentResult
+from app.terms import tokenize
 
 #: Held to a few obvious words on purpose: the dummy engine exists to be
 #: predictable, not accurate (FR2.2).
@@ -65,8 +64,6 @@ MODEL = "dummy-keyword-v1"
 #: it (FR3.5, BR3.2). The retired intensity values are gone with the field itself.
 PROVIDER = "offline"
 
-_WORD = re.compile(r"[a-z']+")
-
 
 class DummySentimentClient:
     """Classify by counting positive and negative keyword occurrences (FR2.2)."""
@@ -79,8 +76,13 @@ class DummySentimentClient:
 
         More positive than negative keywords gives `positive`, the reverse
         gives `negative`, and anything else — including a tie — is `neutral`.
+
+        Tokenising is delegated to the one public tokeniser, `app.terms.tokenize`,
+        and this engine consumes **only** that operation: it never applies the
+        term-length or stopword filters, so its scoring is byte-for-byte what it
+        was before the pattern was promoted out of this module (FR4.2, A4).
         """
-        words = _WORD.findall(text.lower())
+        words = tokenize(text)
         positive_hits = sum(1 for word in words if word in POSITIVE_WORDS)
         negative_hits = sum(1 for word in words if word in NEGATIVE_WORDS)
 

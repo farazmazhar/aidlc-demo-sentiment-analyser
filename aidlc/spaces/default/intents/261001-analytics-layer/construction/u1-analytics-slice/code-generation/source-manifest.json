@@ -1,0 +1,58 @@
+{
+  "stage": "code-generation",
+  "unit": "u1-analytics-slice",
+  "version": 1,
+  "writes": [
+    {
+      "path": "app/analytics.py"
+    },
+    {
+      "path": "app/db.py"
+    },
+    {
+      "path": "app/dummy_client.py"
+    },
+    {
+      "path": "app/main.py"
+    },
+    {
+      "path": "app/models.py"
+    },
+    {
+      "path": "app/routes.py"
+    },
+    {
+      "path": "app/static/app.js"
+    },
+    {
+      "path": "app/static/index.html"
+    },
+    {
+      "path": "app/terms.py"
+    },
+    {
+      "path": "tests/conftest.py"
+    },
+    {
+      "path": "tests/test_analytics_read.py"
+    },
+    {
+      "path": "tests/test_analytics_routes.py"
+    },
+    {
+      "path": "tests/test_db.py"
+    },
+    {
+      "path": "tests/test_migration_indexes.py"
+    },
+    {
+      "path": "tests/test_page.py"
+    },
+    {
+      "path": "tests/test_routes.py"
+    },
+    {
+      "path": "tests/test_terms.py"
+    }
+  ]
+}

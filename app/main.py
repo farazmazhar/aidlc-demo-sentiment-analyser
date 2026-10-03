@@ -1,9 +1,17 @@
 """ASGI entry point and application factory.
 
 Single responsibility: assemble the application — resolve settings, bring the
-database schema to v1 on startup, log the active mode exactly once, mount the
-versioned API, the page and the static assets — and expose it as `app:app` for
-`uvicorn`. (FR1.4, FR1.5, FR3.1, FR3.3, FR4.7, FR5.1, NFR4, NFR6)
+database schema to the current version on startup, log the active mode exactly
+once, mount the versioned APIs, the page and the static assets — enforce the
+loopback bind, and expose it as `app:app` for `uvicorn`. (FR1.4, FR1.5, FR3.1,
+FR3.3, FR4.7, FR5.1, FR7.6, NFR4, NFR5, NFR6)
+
+**The loopback bind is enforced, not documented.** `HOST` is the value the run
+path actually consumes: `run()` resolves it through `resolve_bind_host` before
+starting the server, and `create_app` applies the same check to whatever host it
+is given, so a non-loopback host stops startup with an explanation on every path
+rather than serving an unauthenticated app holding the operator's key
+(FR7.6, AC7.6.1-AC7.6.3).
 """
 
 from __future__ import annotations
@@ -27,6 +35,7 @@ from app.routes import (
     handle_validation_error,
     router,
     v1_router,
+    v2_router,
 )
 from app.sentiment import SentimentAuthError, SentimentEngineError
 from app.service import InvalidTextError, LiveKeyMissingError, effective_connection
@@ -36,7 +45,52 @@ from app.session_auth import SessionAuth
 HOST = "127.0.0.1"
 PORT = 8000
 
+#: The hostnames and addresses that count as loopback. The app is unauthenticated
+#: by design and holds the operator's key, so anything outside this set is refused
+#: at startup rather than served (FR7.6, NFR5.1).
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+
 logger = logging.getLogger("app.main")
+
+
+class NonLoopbackBindError(RuntimeError):
+    """Raised when the run path is asked to bind a non-loopback host.
+
+    Serving this app on an exposed interface would put the operator's OpenRouter
+    key behind an unauthenticated page, so the refusal is loud and immediate: the
+    app does not start rather than start unsafe (FR7.6, AC7.6.1).
+    """
+
+
+def resolve_bind_host(host: str = HOST) -> str:
+    """Return `host` if it is loopback, and refuse it loudly otherwise.
+
+    This is the enforcement the documented `uvicorn app:app` invocation never had:
+    uvicorn's own default is not our constant, so `uvicorn app:app --host 0.0.0.0`
+    used to expose the app while every test still passed. The run path now
+    consumes `HOST` through here, and a non-loopback host stops startup with an
+    explanation instead of serving (FR7.6, AC7.6.1, AC7.6.2).
+    """
+    if host not in LOOPBACK_HOSTS:
+        raise NonLoopbackBindError(
+            f"Refusing to bind {host!r}: this app is unauthenticated and holds the "
+            f"operator's API key, so it is served on loopback only. Allowed hosts: "
+            f"{', '.join(sorted(LOOPBACK_HOSTS))}."
+        )
+    return host
+
+
+def run() -> None:
+    """Serve the application on the loopback bind this module pins.
+
+    The bind is resolved **before** the server starts, so a non-loopback host is
+    a startup failure rather than a running exposure (FR7.6). `uvicorn` is imported
+    here rather than at module scope so importing the application never loads the
+    server, which is the same one-construction-site rule `app.service` follows.
+    """
+    import uvicorn
+
+    uvicorn.run("app.main:app", host=resolve_bind_host(), port=PORT)
 
 
 def _configure_logging() -> None:
@@ -50,15 +104,20 @@ def _configure_logging() -> None:
 
 
 def create_app(
-    settings: Settings | None = None, session_auth: SessionAuth | None = None
+    settings: Settings | None = None,
+    session_auth: SessionAuth | None = None,
+    host: str = HOST,
 ) -> FastAPI:
     """Build the application.
 
     `settings` lets tests inject a temporary database, and `session_auth` lets
     them inject a session store whose code exchange is a double, so no test ever
-    reaches OpenRouter.
+    reaches OpenRouter. `host` defaults to the pinned loopback bind and is
+    validated by the same `resolve_bind_host` the run path uses, so **no** startup
+    path can serve on a non-loopback interface (FR7.6, AC7.6.1, AC7.6.3).
     """
     _configure_logging()
+    resolve_bind_host(host)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -68,7 +127,7 @@ def create_app(
         # and no key obtained in-app is ever written anywhere (BR6.1, NFR2).
         store = application.state.session_auth
         # First-run readiness: the database is created here if it does not exist,
-        # and brought to the v1 shape in place if it predates the contract, so a
+        # and brought to the current schema in place if it predates it, so a
         # fresh checkout needs no manual setup step (BR3.1, BR3.3).
         db.init_db(resolved.db_path)
         connection = effective_connection(resolved, store.credential(), store.reason())
@@ -88,6 +147,7 @@ def create_app(
     )
     application.state.session_auth = session_auth if session_auth is not None else SessionAuth()
     application.include_router(v1_router)
+    application.include_router(v2_router)
     application.include_router(router)
     application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

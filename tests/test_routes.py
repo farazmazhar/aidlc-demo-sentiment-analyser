@@ -339,6 +339,59 @@ def test_the_server_binds_loopback_only():
     assert isinstance(PORT, int)
 
 
+def test_a_non_loopback_host_is_refused_loudly_at_startup(tmp_settings):
+    """FR7.6, AC7.6.1: an exposed bind stops startup with an explanation.
+
+    `HOST` having no call site in the run path was the whole defect: uvicorn's own
+    default is not our constant, so `--host 0.0.0.0` served an unauthenticated app
+    holding the operator's key while every test still passed. The refusal is now
+    loud, and it names the host it refused and the ones it allows.
+    """
+    from app.main import NonLoopbackBindError, create_app, resolve_bind_host
+
+    # `0.0.0.0` is the exact flag that used to expose the app while every test
+    # passed, so it is the case worth asserting; the security rule reads the
+    # literal as a bind and is silenced here only.
+    for host in ("0.0.0.0", "192.168.1.10", "example.com"):  # noqa: S104
+        with pytest.raises(NonLoopbackBindError) as caught:
+            resolve_bind_host(host)
+        assert host in str(caught.value)
+        assert "127.0.0.1" in str(caught.value)
+
+        with pytest.raises(NonLoopbackBindError):
+            create_app(tmp_settings, host=host)
+
+    # The working local run is unchanged.
+    assert create_app(tmp_settings) is not None
+
+
+def test_the_run_path_consumes_the_pinned_host_and_port(monkeypatch):
+    """FR7.6, AC7.6.2: `HOST` is the value the run path actually consumes.
+
+    The server is a process boundary, so it is substituted here and the binding it
+    was handed is asserted. The point is that `uvicorn` is never the thing deciding
+    the address any more: `HOST` and `PORT` are, and a refusal happens before the
+    server is reached at all.
+    """
+    import sys
+
+    from app.main import PORT, run
+
+    recorded: dict[str, object] = {}
+
+    class StubUvicorn:
+        """Stands in for the server process."""
+
+        @staticmethod
+        def run(target, *, host, port):
+            recorded.update(target=target, host=host, port=port)
+
+    monkeypatch.setitem(sys.modules, "uvicorn", StubUvicorn)
+    run()
+
+    assert recorded == {"target": "app.main:app", "host": "127.0.0.1", "port": PORT}
+
+
 def test_pre_v1_data_paths_are_no_longer_served(app):
     """The unversioned data routes are gone; the surface is `/v1` only (BR4.2)."""
     assert asgi_request(app, "GET", "/analyses").status_code == 404

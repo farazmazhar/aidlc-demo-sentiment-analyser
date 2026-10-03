@@ -1,0 +1,959 @@
+{
+  "stage": "code-generation",
+  "unit": "u1-analytics-slice",
+  "upstream_ids": [
+    "BR1.1",
+    "BR1.2",
+    "BR1.3",
+    "BR1.4",
+    "BR1.5",
+    "BR2.1",
+    "BR2.2",
+    "BR2.3",
+    "BR2.4",
+    "BR2.5",
+    "BR2.6",
+    "BR2.7",
+    "BR2.8",
+    "BR2.9",
+    "BR2.10",
+    "BR2.11",
+    "BR2.12",
+    "BR2.13",
+    "BR2.14",
+    "BR2.15",
+    "BR3.1",
+    "BR3.2",
+    "BR3.3",
+    "BR3.4",
+    "BR3.5",
+    "BR3.6",
+    "BR4.1",
+    "BR4.2",
+    "BR4.3",
+    "BR4.4",
+    "BR4.5",
+    "BR4.6",
+    "BR4.7",
+    "BR5.1",
+    "BR5.2",
+    "BR5.3",
+    "BR5.4",
+    "BR5.5",
+    "BR5.6",
+    "BR6.1",
+    "BR6.2",
+    "BR6.3",
+    "BR6.4",
+    "BR6.5",
+    "BR6.6",
+    "AC1.1.1",
+    "AC1.1.2",
+    "AC1.1.3",
+    "AC1.1.4",
+    "AC1.1.5",
+    "AC1.2.1",
+    "AC1.2.2",
+    "AC1.2.3",
+    "AC2.1.1",
+    "AC2.1.2",
+    "AC2.1.3",
+    "AC2.1.4",
+    "AC2.1.5",
+    "AC2.2.1",
+    "AC2.2.2",
+    "AC2.2.3",
+    "AC2.2.4",
+    "AC2.2.5",
+    "AC2.2.6",
+    "AC2.3.1",
+    "AC2.3.2",
+    "AC2.3.3",
+    "AC2.4.1",
+    "AC2.4.2",
+    "AC2.4.3",
+    "AC2.4.4",
+    "AC2.4.5",
+    "AC2.5.1",
+    "AC2.5.2",
+    "AC3.1.1",
+    "AC3.1.2",
+    "AC3.1.3",
+    "AC3.1.4",
+    "AC3.1.5",
+    "AC3.2.1",
+    "AC3.2.2",
+    "AC3.2.3",
+    "AC5.1.1",
+    "AC5.1.2",
+    "AC5.1.3",
+    "AC5.1.4",
+    "AC5.1.5",
+    "AC5.2.1",
+    "AC5.2.2",
+    "AC6.2.1",
+    "AC6.2.2",
+    "AC6.2.5",
+    "AC6.2.3",
+    "AC6.2.4",
+    "AC7.6.1",
+    "AC7.6.2",
+    "AC7.6.3",
+    "AC7.7.1",
+    "AC7.7.2",
+    "AC7.7.3",
+    "AC7.7.4",
+    "AC7.7.5",
+    "AC8.1.1",
+    "AC8.1.2",
+    "AC8.1.3",
+    "AC8.1.4",
+    "AC8.2.1",
+    "AC8.2.2",
+    "AC8.2.3",
+    "AC8.3.1",
+    "AC8.3.2",
+    "AC8.4.1",
+    "AC8.4.2",
+    "AC8.5.1",
+    "AC8.5.2",
+    "AC8.5.3",
+    "AC8.6.1",
+    "AC8.6.2",
+    "AC8.6.3",
+    "AC8.6.4",
+    "AC8.7.1",
+    "AC8.7.2",
+    "AC8.7.3",
+    "AC8.7.4",
+    "AC8.8.1",
+    "AC8.8.2",
+    "AC8.9.1",
+    "AC8.9.2",
+    "AC8.9.3",
+    "NFR1.1",
+    "NFR1.2",
+    "NFR1.3",
+    "NFR1.4",
+    "NFR2.1",
+    "NFR2.2",
+    "NFR2.3",
+    "NFR2.4",
+    "NFR2.5",
+    "NFR2.6",
+    "NFR3.1",
+    "NFR3.2",
+    "NFR4.1",
+    "NFR4.2",
+    "NFR4.3",
+    "NFR4.4",
+    "NFR4.5",
+    "NFR4.6",
+    "NFR4.7",
+    "NFR8.1",
+    "NFR8.2",
+    "NFR8.3",
+    "NFR9.1",
+    "NFR9.2",
+    "NFR9.3",
+    "NFR9.4"
+  ],
+  "coverage": [
+    {
+      "id": "BR1.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR1.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR1.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR1.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR1.5",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.5",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.6",
+      "status": "OK",
+      "target": "app/routes.py",
+      "note": "`limit` is bound by `Query(DEFAULT_TERM_LIMIT, ge=1)`, so a non-numeric or sub-1 value is refused by the existing validation handler rather than clamped, matching the /v1 convention exactly."
+    },
+    {
+      "id": "BR2.7",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.8",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.9",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.10",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR2.11",
+      "status": "OK",
+      "target": "app/static/index.html",
+      "note": "The series container and the label-breakdown container ship in the markup, each with exactly one fetch to its own endpoint; the term-list containers AC6.2.1 also names belong to u3-analytics-view and are marked as such on that criterion."
+    },
+    {
+      "id": "BR2.12",
+      "status": "OK",
+      "target": "app/static/app.js"
+    },
+    {
+      "id": "BR2.13",
+      "status": "OK",
+      "target": "app/static/app.js"
+    },
+    {
+      "id": "BR2.14",
+      "status": "OK",
+      "target": "tests/test_page.py"
+    },
+    {
+      "id": "BR2.15",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR3.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR3.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR3.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR3.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR3.5",
+      "status": "OK",
+      "target": "app/models.py"
+    },
+    {
+      "id": "BR3.6",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py",
+      "note": "The budget is measured in a separate interpreter with no pytest and therefore no coverage instrumentation, over the pinned 10,000-row / 365-day fixture."
+    },
+    {
+      "id": "BR4.1",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "BR4.2",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "BR4.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR4.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR4.5",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "BR4.6",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "BR4.7",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "BR5.1",
+      "status": "OK",
+      "target": "app/db.py"
+    },
+    {
+      "id": "BR5.2",
+      "status": "OK",
+      "target": "app/db.py"
+    },
+    {
+      "id": "BR5.3",
+      "status": "OK",
+      "target": "app/db.py"
+    },
+    {
+      "id": "BR5.4",
+      "status": "OK",
+      "target": "app/db.py",
+      "note": "SQLite's CREATE TABLE declares no index, so all three are re-created as explicit statements after the DROP; asserted by name after a real rebuild."
+    },
+    {
+      "id": "BR5.5",
+      "status": "OK",
+      "target": "app/db.py"
+    },
+    {
+      "id": "BR5.6",
+      "status": "OK",
+      "target": "app/db.py"
+    },
+    {
+      "id": "BR6.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "BR6.2",
+      "status": "OK",
+      "target": "app/db.py",
+      "note": "The decision is recorded in this module's docstring because it is the repository's only `sqlite3.connect` site; `get_connection` records the request-scoped lifecycle it depends on."
+    },
+    {
+      "id": "BR6.3",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py",
+      "note": "The load-bearing instrument is `test_the_driver_opens_connections_that_may_be_used_and_closed_on_another_thread`, verified red when `check_same_thread` is reverted to True; it is backed by the overlap test and a 24-request soak."
+    },
+    {
+      "id": "BR6.4",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "BR6.5",
+      "status": "OK",
+      "target": "app/main.py"
+    },
+    {
+      "id": "BR6.6",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC1.1.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC1.1.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC1.1.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC1.1.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC1.1.5",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC1.2.1",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC1.2.2",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC1.2.3",
+      "status": "OK",
+      "target": "app/db.py",
+      "note": "The thread-affinity decision and the request-scoped invariant it depends on are recorded in app/db.py's docstring, because that module owns the only sqlite3.connect site; get_connection records the lifecycle."
+    },
+    {
+      "id": "AC2.1.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.1.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.1.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.1.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.1.5",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "AC2.2.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.2.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.2.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.2.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.2.5",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.2.6",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.3.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.3.2",
+      "status": "OK",
+      "target": "app/models.py"
+    },
+    {
+      "id": "AC2.3.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.4.1",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC2.4.2",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC2.4.3",
+      "status": "N/A",
+      "target": "UNREACHABLE (contract UC1), carried from functional-design. `import_id` is pinned as an opaque string with no parse step, so no input can trigger a 422 naming query.import_id; an unmatched id is the 200 empty result of AC2.4.2/BR4.4. The reachable from/to halves of this criterion ARE delivered by BR4.2. No test is written for the impossible import_id 422.",
+      "note": "UNREACHABLE (contract UC1), carried from functional-design. `import_id` is pinned as an opaque string with no parse step, so no input can trigger a 422 naming query.import_id; an unmatched id is the 200 empty result of AC2.4.2/BR4.4. The reachable from/to halves of this criterion ARE delivered by BR4.2. No test is written for the impossible import_id 422."
+    },
+    {
+      "id": "AC2.4.4",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC2.4.5",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC2.5.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC2.5.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC3.1.1",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC3.1.2",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC3.1.3",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC3.1.4",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC3.1.5",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC3.2.1",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC3.2.2",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC3.2.3",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py",
+      "note": "Delivered on the contract's reconciliation. Read literally this criterion asks the terms empty body to match the summary's, but BR4.4 and contract-summary.md \u00a77 P4 freeze them as two DISTINCT shapes ({positive: [], negative: []} carries no total, no series and no summary fields). Emptiness is conveyed identically in both - a 200 in the endpoint's own frozen body, never a 404 and never an invented shape."
+    },
+    {
+      "id": "AC5.1.1",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC5.1.2",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC5.1.3",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC5.1.4",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC5.1.5",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC5.2.1",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC5.2.2",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC6.2.1",
+      "status": "OK",
+      "target": "app/static/index.html",
+      "note": "PARTIAL by design, as ruled at functional-design. This unit delivers the series container and the label-breakdown container (the US6.2 slice half, its declared target); the two term-list containers are owned by u3-analytics-view per unit-of-work-story-map.md's cross-cutting table. Neither half is dropped."
+    },
+    {
+      "id": "AC6.2.2",
+      "status": "OK",
+      "target": "app/static/index.html"
+    },
+    {
+      "id": "AC6.2.5",
+      "status": "OK",
+      "target": "app/static/app.js"
+    },
+    {
+      "id": "AC6.2.3",
+      "status": "OK",
+      "target": "app/static/app.js"
+    },
+    {
+      "id": "AC6.2.4",
+      "status": "OK",
+      "target": "tests/test_page.py"
+    },
+    {
+      "id": "AC7.6.1",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC7.6.2",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC7.6.3",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py"
+    },
+    {
+      "id": "AC7.7.1",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC7.7.2",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC7.7.3",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC7.7.4",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC7.7.5",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC8.1.1",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "AC8.1.2",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "AC8.1.3",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "AC8.1.4",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py",
+      "note": "The budget is measured in a subprocess with no pytest and therefore no coverage plugin, so the wall-clock figure describes the application rather than the instrumented run."
+    },
+    {
+      "id": "AC8.2.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.2.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.2.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.3.1",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC8.3.2",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "AC8.4.1",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "AC8.4.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.5.1",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "AC8.5.2",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "AC8.5.3",
+      "status": "OK",
+      "target": "app/sentiment.py",
+      "note": "`app/sentiment.py` is untouched; `SentimentClient` gains no member and both adapters behave as before."
+    },
+    {
+      "id": "AC8.6.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.6.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.6.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.6.4",
+      "status": "OK",
+      "target": "app/config.py",
+      "note": "Decidable outcome: the analytics layer needs no new configuration value, so it adds none. `app/config.py` is untouched and `Settings` gains no member."
+    },
+    {
+      "id": "AC8.7.1",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC8.7.2",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC8.7.3",
+      "status": "OK",
+      "target": "tests/conftest.py",
+      "note": "Carried by reference to the team's Testing Contract, as the criterion itself directs. The suite's realisation of that contract is this harness: real SQLite, real served markup, zero mocks, and the armed offline guard."
+    },
+    {
+      "id": "AC8.7.4",
+      "status": "OK",
+      "target": "tests/conftest.py"
+    },
+    {
+      "id": "AC8.8.1",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "AC8.8.2",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "AC8.9.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.9.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "AC8.9.3",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "NFR1.1",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "NFR1.2",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "NFR1.3",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "NFR1.4",
+      "status": "OK",
+      "target": "tests/test_analytics_read.py"
+    },
+    {
+      "id": "NFR2.1",
+      "status": "OK",
+      "target": "app/main.py",
+      "note": "No authentication or authorization is added; the app stays loopback-only and unauthenticated by design. The loopback enforcement that bounds this posture is delivered under NFR2.4."
+    },
+    {
+      "id": "NFR2.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "NFR2.3",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "NFR2.4",
+      "status": "OK",
+      "target": "app/main.py"
+    },
+    {
+      "id": "NFR2.5",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "NFR2.6",
+      "status": "OK",
+      "target": "tests/test_analytics_routes.py",
+      "note": "Compliance within C-9/C-10/C-11: no new egress, loopback enforced, no credential. `pyproject.toml` is untouched and `tests/test_config.py`'s dependency-cap assertion stays green, proving no third runtime dependency was declared."
+    },
+    {
+      "id": "NFR3.1",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py"
+    },
+    {
+      "id": "NFR3.2",
+      "status": "OK",
+      "target": "tests/test_migration_indexes.py",
+      "note": "The read path's traced statement set is asserted to contain no INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/REPLACE form, on the very connection the request uses."
+    },
+    {
+      "id": "NFR4.1",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "NFR4.2",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "NFR4.3",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "NFR4.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "NFR4.5",
+      "status": "OK",
+      "target": "app/db.py",
+      "note": "The additive v3 -> v4 migration is idempotent, preserves every row, bumps the version in the same transaction, re-creates all three indexes by name after a rebuild, and rolls back and re-raises on a store it cannot read."
+    },
+    {
+      "id": "NFR4.6",
+      "status": "N/A",
+      "target": "NOT DELIVERED by this unit, and not deliverable by it. The criterion's substance is the cross-section partial-failure marker - one section succeeding while another fails - which requires two analytics sections. This unit completes only the summary region end to end; the second section (the two term-list containers) and the range control are u3-analytics-view's per unit-of-work-story-map.md's cross-cutting table. The participating half IS delivered: summary, empty and error are three distinct regions, and a failed fetch renders in place rather than as an empty success (app/static/index.html, app/static/app.js, tests/test_page.py). Recorded N/A rather than OK so the unbuilt half is not claimed."
+    },
+    {
+      "id": "NFR4.7",
+      "status": "N/A",
+      "target": "NOT DELIVERED by this unit, and not deliverable by it. The out-of-order discard rule needs a superseded range, and this unit ships no range control - the range control is u3-analytics-view's, and functional-spec.md Workflow 4 step 3 records the discard rule as that unit's, participating in this unit's summary region. The participating half IS delivered and asserted: the summary region issues no retry (exactly one fetch, pinned by tests/test_page.py), so a failure is surfaced rather than auto-retried. Recorded N/A rather than OK so the unbuilt half is not claimed."
+    },
+    {
+      "id": "NFR8.1",
+      "status": "OK",
+      "target": "app/routes.py"
+    },
+    {
+      "id": "NFR8.2",
+      "status": "OK",
+      "target": "app/routes.py",
+      "note": "The machine code travels on the envelope AND in the log record, so the wire surface and the log agree; asserted by test_a_storage_failure_is_logged_through_the_module_logger_with_its_code. (This criterion surfaced the defect recorded in code-summary.md: the code was on the wire but not in the log.)"
+    },
+    {
+      "id": "NFR8.3",
+      "status": "OK",
+      "target": "app/routes.py",
+      "note": "No request parameter is interpolated into statement text and no credential appears in a log record; asserted on the analytics failure path, and the existing redaction assertions stay green."
+    },
+    {
+      "id": "NFR9.1",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "NFR9.2",
+      "status": "OK",
+      "target": "app/analytics.py"
+    },
+    {
+      "id": "NFR9.3",
+      "status": "OK",
+      "target": "app/analytics.py",
+      "note": "The unbounded series is deliberately uncapped. No cap is imposed, which is a policy question for a future scope and not an oversight; the honest bound is that the series length equals the resolved-range day count."
+    },
+    {
+      "id": "NFR9.4",
+      "status": "OK",
+      "target": "app/analytics.py"
+    }
+  ]
+}

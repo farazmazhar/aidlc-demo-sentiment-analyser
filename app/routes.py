@@ -1,15 +1,18 @@
-"""The HTTP surface: one page, one versioned JSON API, one health endpoint.
+"""The HTTP surface: one page, two versioned JSON APIs, one health endpoint.
 
-Single responsibility: translate HTTP requests into service calls and service
-failures into one consistent error envelope, and nothing else. No sentiment
-logic and no SQL live here — the engine arrives through `app.service` and the
-data through the repository. (FR4.1-FR4.7, BR4.1-BR4.4)
+Single responsibility: translate HTTP requests into service calls, read calls and
+service failures into one consistent error envelope, and nothing else. No
+sentiment logic and no SQL live here — the engine arrives through `app.service`,
+the stored rows through the repository and the analytics aggregates through
+`app.analytics`. (FR4.1-FR4.7, BR4.1-BR4.4, BR2.10)
 
-The data routes are served under the versioned prefix `/v1` (BR4.2, D3). The
-page's own `/`, its `/static/*` assets and the `/auth/*` support routes carry no
-data contract, so they stay unversioned. The bulk CSV surface (`POST
-/v1/analyses/import`, `GET /v1/analyses/export`) is additive under the same
-router (FR1.1, FR2.1).
+The v1 data routes are served under the versioned prefix `/v1` and are frozen
+(BR4.2, D3). The read-only analytics surface is served under `/v2` on its own
+router, which is additive: `/v1` paths, shapes, envelope and client interface do
+not move (BR4.7). The page's own `/`, its `/static/*` assets and the `/auth/*`
+support routes carry no data contract, so they stay unversioned. The bulk CSV
+surface (`POST /v1/analyses/import`, `GET /v1/analyses/export`) is additive under
+the same router (FR1.1, FR2.1).
 """
 
 from __future__ import annotations
@@ -26,6 +29,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import db
+from app.analytics import (
+    DEFAULT_TERM_LIMIT,
+    RangeError,
+    read_summary,
+    read_terms,
+    resolve_range,
+)
 from app.config import Settings
 from app.models import AnalyzeRequest, undeclared_body_fields
 from app.repository import DEFAULT_LIST_LIMIT, list_analyses, list_analyses_by_import_id
@@ -45,8 +55,14 @@ from app.session_auth import AuthExchangeError, SessionAuth
 STATIC_DIR = Path(__file__).parent / "static"
 INDEX_HTML = STATIC_DIR / "index.html"
 
-#: The version prefix every data route is served under (BR4.2, D3).
+#: The version prefix every v1 data route is served under (BR4.2, D3).
 V1_PREFIX = "/v1"
+
+#: The version prefix the analytics read surface is served under. A named constant
+#: on both sides of the wire: `app/static/app.js` holds the second copy and a test
+#: asserts the two are equal, so a prefix change cannot silently break every
+#: analytics fetch (BR2.13, AC6.2.3).
+V2_PREFIX = "/v2"
 
 #: Machine-readable codes used in the error envelope (BR4.3).
 VALIDATION_FAILED = "VALIDATION_FAILED"
@@ -55,6 +71,12 @@ LIVE_KEY_MISSING = "LIVE_KEY_MISSING"
 SENTIMENT_ENGINE_ERROR = "SENTIMENT_ENGINE_ERROR"
 AUTH_EXPIRED = "AUTH_EXPIRED"
 IMPORT_NOT_FOUND = "IMPORT_NOT_FOUND"
+#: The one addition this feature makes to the envelope's code set: a store that
+#: cannot answer is distinguishable from a malformed parameter, so a client can
+#: branch on the code rather than on the message (BR4.5, NFR4.2). The same literal
+#: is written into the log record as well as onto the wire, so the two agree and an
+#: operator can match a server-side line to a response body (BR4.6, NFR8.2).
+STORAGE_FAILURE = "STORAGE_FAILURE"
 
 #: The content types the bulk-import body may use (FR1.7). `text/plain` is
 #: accepted so the same CSV can be posted without a CSV-specific type.
@@ -90,7 +112,22 @@ def get_session_auth(request: Request) -> SessionAuth:
 
 
 def get_connection(request: Request) -> Iterator[sqlite3.Connection]:
-    """One short-lived SQLite connection per request, closed when it finishes."""
+    """Hand this request its own SQLite connection, and close it when it finishes.
+
+    **The connection lifecycle, stated here rather than inherited.** Exactly one
+    connection is created per request and closed in this `finally`, so the
+    request that opened it is the request that closes it. Nothing is cached,
+    pooled, stored on a module global or shared between two concurrent requests.
+
+    **Thread affinity.** The driver is opened by `app.db.connect` with
+    `check_same_thread=False`, and that decision is only safe because of the
+    invariant above: a synchronous dependency and a synchronous handler run on
+    worker threads that are not guaranteed to be the same one, so the driver's
+    same-thread default would refuse a connection this application legitimately
+    hands between threads of a single request. If a future change pools or shares
+    a connection, the guard must be re-enabled or the sharing made thread-safe
+    (FR1.6, R-01).
+    """
     connection = db.connect(request.app.state.settings.db_path)
     try:
         yield connection
@@ -132,6 +169,9 @@ router = APIRouter()
 
 #: The versioned JSON API (BR4.2).
 v1_router = APIRouter(prefix=V1_PREFIX)
+
+#: The read-only analytics API, additive under its own prefix (BR4.7).
+v2_router = APIRouter(prefix=V2_PREFIX)
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -286,6 +326,81 @@ def health(request: Request, settings: Settings = Depends(get_settings)) -> dict
     if not connection["connected"]:
         payload["reason"] = connection["reason"]
     return payload
+
+
+# -- the read-only /v2 analytics surface ---------------------------------------
+#
+# Both handlers hold no statement text and no query helper: validation and range
+# resolution happen here, and every aggregate is computed by `app.analytics` from
+# the connection this module owns (BR2.10). Reads go route -> read module; the
+# service layer is not inserted into the analytics path.
+
+
+@v2_router.get("/analytics/summary")
+def get_analytics_summary(
+    from_bound: str | None = Query(None, alias="from"),
+    to_bound: str | None = Query(None, alias="to"),
+    import_id: str | None = Query(None),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> JSONResponse:
+    """Aggregate the resolved range into the six-field summary (FR2.1-FR2.10).
+
+    `from`, `to` and `import_id` are all optional and no parameter is ever
+    silently defaulted or clamped. Validation and the inverted-range refusal
+    happen **before** anything is computed, so a refused request pays no read cost
+    and returns no aggregate at all (BR1.4, BR4.2, BR4.3). A range matching no row
+    is a `200` with `total` 0 and an empty series, never a `404` (BR4.4); a store
+    that cannot answer is a `500 STORAGE_FAILURE`, which is distinct from every
+    validation code (BR4.5).
+    """
+    try:
+        resolved = resolve_range(from_bound, to_bound)
+    except RangeError as exc:
+        return error_response(422, VALIDATION_FAILED, str(exc))
+
+    try:
+        summary = read_summary(connection, resolved, import_id)
+    except sqlite3.Error as exc:
+        logger.error("analytics summary read failed (%s): %s", STORAGE_FAILURE, exc)
+        return error_response(
+            500, STORAGE_FAILURE, "The analytics store could not answer the request."
+        )
+
+    return JSONResponse(status_code=200, content=summary.to_dict())
+
+
+@v2_router.get("/analytics/terms")
+def get_analytics_terms(
+    from_bound: str | None = Query(None, alias="from"),
+    to_bound: str | None = Query(None, alias="to"),
+    import_id: str | None = Query(None),
+    limit: int = Query(DEFAULT_TERM_LIMIT, ge=1),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> JSONResponse:
+    """Rank the leading terms of the resolved range, per label (FR3.2-FR3.7).
+
+    The bounds resolve exactly as they do on the summary endpoint, so the two
+    always describe one population (BR1.5). `limit` is `Query(..., ge=1)`, so a
+    value below one or a non-numeric one is refused by the shared validation
+    handler through the same envelope `limit` uses on `/v1` — never clamped — and
+    an oversized value returns every available term instead (BR2.6). The payload is
+    exactly `{positive, negative}`; a no-match range yields two empty arrays
+    (BR4.4).
+    """
+    try:
+        resolved = resolve_range(from_bound, to_bound)
+    except RangeError as exc:
+        return error_response(422, VALIDATION_FAILED, str(exc))
+
+    try:
+        terms = read_terms(connection, resolved, import_id, limit)
+    except sqlite3.Error as exc:
+        logger.error("analytics terms read failed (%s): %s", STORAGE_FAILURE, exc)
+        return error_response(
+            500, STORAGE_FAILURE, "The analytics store could not answer the request."
+        )
+
+    return JSONResponse(status_code=200, content=terms.to_dict())
 
 
 # -- in-app OpenRouter authorization (page support, no data contract) ---------

@@ -22,6 +22,31 @@
         margin-top: 0;
         opacity: 0.85;
       }
+      /* The page shell: the heading, the nav and the connection indicator share
+         one header, so the indicator is no longer a fixed overlay floating above
+         whatever happens to be on screen (US6.2). */
+      .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .site-nav ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .site-nav a {
+        color: inherit;
+      }
+      .site-nav a[aria-current="page"] {
+        font-weight: 700;
+        text-decoration-thickness: 2px;
+      }
       form {
         display: grid;
         gap: 0.5rem;
@@ -70,19 +95,65 @@
         opacity: 0.85;
         font-size: 0.9rem;
       }
+      /* The analytics summary region. The per-day series is a native SVG
+         polyline with its values also written as text, so the shape is never the
+         only way the data is conveyed (AC6.2.1, FR6.6). */
+      section[data-testid="analytics-summary"] {
+        border: 1px solid currentColor;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin: 1rem 0;
+      }
+      .summary-figures {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 2rem;
+        margin: 0.5rem 0;
+      }
+      .summary-figures p {
+        margin: 0;
+      }
+      .series-figure {
+        margin: 0.5rem 0;
+      }
+      .series-values {
+        font-variant-numeric: tabular-nums;
+        font-size: 0.85rem;
+        opacity: 0.85;
+      }
+      .breakdown {
+        list-style: none;
+        margin: 0.5rem 0 0;
+        padding: 0;
+      }
+      .breakdown li {
+        padding: 0.2rem 0;
+      }
+      .no-share {
+        font-style: italic;
+        opacity: 0.85;
+      }
+      section[data-testid="analytics-empty"],
+      section[data-testid="analytics-error"] {
+        margin: 1rem 0;
+        padding: 0.6rem 0.9rem;
+        border: 1px solid currentColor;
+        border-radius: 6px;
+      }
+      section[data-testid="analytics-error"] {
+        border-color: #b00020;
+        color: #b00020;
+      }
       /* OpenRouter connection indicator: red = the offline engine is in use,
          green = the app is talking to OpenRouter. The state is also written in
          words, so colour is never the only signal (AC5.3.2). */
       .connection-indicator {
-        position: fixed;
-        top: 0.75rem;
-        left: 0.75rem;
-        z-index: 10;
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
         min-height: 2.75rem;
         min-width: 2.75rem;
+        margin-left: auto;
         font: inherit;
         font-size: 0.85rem;
         padding: 0.5rem 0.9rem;
@@ -108,47 +179,65 @@
     </style>
   </head>
   <body>
-    <button
-      type="button"
-      data-testid="connection-status"
-      id="connection-status"
-      class="connection-indicator"
-      data-connected="false"
-      title="Checking the OpenRouter connection…"
-    >
-      <span class="connection-dot" aria-hidden="true"></span>
-      <span
-        data-testid="connection-status-text"
-        id="connection-status-text"
-        role="status"
-        aria-live="polite"
+    <header class="page-header">
+      <h1>Sentiment analysis</h1>
+
+      <nav class="site-nav" data-testid="site-nav" id="site-nav" aria-label="Sections">
+        <ul>
+          <li>
+            <a data-testid="nav-analyze" href="#analyse-section" aria-current="page">
+              Analyse
+            </a>
+          </li>
+          <li><a data-testid="nav-summary" href="#analytics-summary">Summary</a></li>
+          <li><a data-testid="nav-terms" href="#terms-section">Terms</a></li>
+        </ul>
+      </nav>
+
+      <button
+        type="button"
+        data-testid="connection-status"
+        id="connection-status"
+        class="connection-indicator"
+        data-connected="false"
+        title="Checking the OpenRouter connection…"
       >
-        OpenRouter: checking…
-      </span>
-    </button>
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span
+          data-testid="connection-status-text"
+          id="connection-status-text"
+          role="status"
+          aria-live="polite"
+        >
+          OpenRouter: checking…
+        </span>
+      </button>
+    </header>
 
     <main>
-      <h1>Sentiment analysis</h1>
       <p class="lede">
         Submit a short piece of text to get a typed label, its confidence and the
         per-label probabilities. Each result shows which engine produced it.
         History is stored locally.
       </p>
 
-      <form data-testid="analyze-form" id="analyze-form" novalidate>
-        <label for="analyze-input">Text to analyse</label>
-        <textarea
-          data-testid="analyze-input"
-          id="analyze-input"
-          name="text"
-          rows="4"
-          placeholder="e.g. I love how this turned out"
-          required
-        ></textarea>
-        <button data-testid="analyze-submit-button" id="analyze-submit-button" type="submit">
-          Analyse
-        </button>
-      </form>
+      <section id="analyse-section" aria-labelledby="analyse-heading">
+        <h2 id="analyse-heading">Analyse</h2>
+        <form data-testid="analyze-form" id="analyze-form" novalidate>
+          <label for="analyze-input">Text to analyse</label>
+          <textarea
+            data-testid="analyze-input"
+            id="analyze-input"
+            name="text"
+            rows="4"
+            placeholder="e.g. I love how this turned out"
+            required
+          ></textarea>
+          <button data-testid="analyze-submit-button" id="analyze-submit-button" type="submit">
+            Analyse
+          </button>
+        </form>
+      </section>
 
       <section data-testid="error-panel" id="error-panel" role="alert" hidden></section>
 
@@ -170,6 +259,75 @@
           data-testid="result-probabilities"
           id="result-probabilities"
         ></ul>
+      </section>
+
+      <!-- The summary region of the analytics view. Every figure below is written
+           from a value the /v2 endpoint returned and nothing else: a null share
+           becomes an explicit no-share marker, never a fabricated 0%
+           (FR6.2, FR2.7, AC6.2.5). The term-list containers and the range control
+           are a later change (AC6.2.1's other half, AC6.3.1-AC6.3.4). -->
+      <section
+        data-testid="analytics-summary"
+        id="analytics-summary"
+        aria-labelledby="analytics-summary-heading"
+      >
+        <h2 id="analytics-summary-heading">Summary</h2>
+
+        <div class="summary-figures">
+          <p>
+            Analyses:
+            <strong data-testid="summary-total" id="summary-total"></strong>
+          </p>
+          <p>
+            Mean confidence:
+            <strong
+              data-testid="summary-mean-confidence"
+              id="summary-mean-confidence"
+            ></strong>
+          </p>
+          <p>
+            Days:
+            <strong data-testid="summary-day-count" id="summary-day-count"></strong>
+          </p>
+        </div>
+
+        <figure class="series-figure" data-testid="summary-series" id="summary-series">
+          <svg
+            data-testid="summary-series-chart"
+            id="summary-series-chart"
+            viewBox="0 0 600 120"
+            preserveAspectRatio="none"
+            role="img"
+            aria-labelledby="summary-series-title"
+          >
+            <title id="summary-series-title">Analyses per UTC day</title>
+            <polyline id="summary-series-line" data-testid="summary-series-line" points="" />
+          </svg>
+          <figcaption class="series-values">
+            Per day: <span data-testid="summary-series-values" id="summary-series-values"></span>
+          </figcaption>
+        </figure>
+
+        <h3>Label breakdown</h3>
+        <ul class="breakdown" data-testid="summary-breakdown" id="summary-breakdown"></ul>
+      </section>
+
+      <section data-testid="analytics-empty" id="analytics-empty" hidden>
+        <p>No analyses in this range yet.</p>
+      </section>
+
+      <section
+        data-testid="analytics-error"
+        id="analytics-error"
+        role="alert"
+        hidden
+      ></section>
+
+      <!-- The two term-list containers land with the range control; this unit
+           completes the summary path end to end (US6.2, slice half). -->
+      <section id="terms-section" aria-labelledby="terms-heading">
+        <h2 id="terms-heading">Terms</h2>
+        <p>The ranked term lists for the current range appear here.</p>
       </section>
 
       <section aria-labelledby="history-heading">

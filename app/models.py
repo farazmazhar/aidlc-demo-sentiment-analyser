@@ -1,13 +1,14 @@
 """Request/response schemas and the persisted record shape.
 
-Single responsibility: define the wire and storage shape of one analysis in a
-single place, so the API contract and the stored row contract (FR3.2, FR3.6)
-cannot drift apart.
+Single responsibility: define the wire and storage shapes in a single place, so
+the API contract and the stored row contract (FR3.2, FR3.6) cannot drift apart.
+One analysis record and the four computed analytics shapes live here; none of
+them is ever persisted (ADR-005).
 
 Only stdlib types are used here: FastAPI accepts a plain dataclass as a request
-body, and the response shape is `AnalysisRecord.to_dict()`. That keeps the
-codebase free of a direct dependency on the validation library that FastAPI
-happens to use internally (NFR3).
+body, and the response shape is `to_dict()`. That keeps the codebase free of a
+direct dependency on the validation library that FastAPI happens to use
+internally (NFR3).
 
 The retired `intensity` attribute is absent from this shape on purpose: the v1
 contract no longer produces it, so new rows leave it unset and a pre-v1 row is
@@ -17,7 +18,7 @@ read without it being invented (BR3.4, AC7.1.3).
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
 from typing import Any
 
@@ -142,3 +143,104 @@ class AnalysisRecord:
             created_at=str(row["created_at"]),
             import_id=None if import_id is None else str(import_id),
         )
+
+
+# -- computed analytics shapes ------------------------------------------------
+#
+# These four are computed on request and never stored, written or cached
+# (ADR-005). `shares.*` and `mean_confidence` are `null` **exactly** when their
+# denominator is 0 — the project refuses to substitute a fabricated `0.0` for an
+# answer it does not have (BR2.2, BR2.3). `resolved_range` is deliberately absent
+# from `AnalyticsSummary`: it is the in-process identifier of the computed shape,
+# never a wire field (contract UC3).
+
+
+@dataclass(frozen=True)
+class AnalyticsSeriesEntry:
+    """One UTC calendar day inside a range that matched at least one row.
+
+    All six fields are always present, including on a zero-filled day, so a day
+    without data is never indistinguishable from an absent day (`BR3.2`, `BR3.5`).
+    """
+
+    date: str
+    total: int
+    counts: dict[str, int]
+    shares: dict[str, float | None]
+    mean_confidence: float | None
+    mean_confidence_row_count: int
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the entry as JSON-ready primitives, in the pinned field order."""
+        return {
+            "date": self.date,
+            "total": self.total,
+            "counts": dict(self.counts),
+            "shares": dict(self.shares),
+            "mean_confidence": self.mean_confidence,
+            "mean_confidence_row_count": self.mean_confidence_row_count,
+        }
+
+
+@dataclass(frozen=True)
+class AnalyticsSummary:
+    """The summary answer over one resolved range: totals, mix, mean and series.
+
+    `mean_confidence_row_count` always equals `total`, so the response states its
+    own denominator (`BR2.3`). `series` is ascending by `date` and empty when the
+    range matched no row — never a zero-filled span (`BR3.3`).
+    """
+
+    total: int
+    counts: dict[str, int]
+    shares: dict[str, float | None]
+    mean_confidence: float | None
+    mean_confidence_row_count: int
+    series: list[AnalyticsSeriesEntry]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the summary as JSON-ready primitives, in the pinned field order."""
+        return {
+            "total": self.total,
+            "counts": dict(self.counts),
+            "shares": dict(self.shares),
+            "mean_confidence": self.mean_confidence,
+            "mean_confidence_row_count": self.mean_confidence_row_count,
+            "series": [entry.to_dict() for entry in self.series],
+        }
+
+
+@dataclass(frozen=True)
+class TermFrequencyEntry:
+    """One ranked term: the term and its occurrence count, and nothing else.
+
+    No share, no score and no weighting is emitted, so the entry is exactly the
+    value pair the contract pins (`BR2.5`).
+    """
+
+    term: str
+    count: int
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the entry as JSON-ready primitives, in the pinned field order."""
+        return {"term": self.term, "count": self.count}
+
+
+@dataclass(frozen=True)
+class AnalyticsTerms:
+    """The two ranked term lists: exactly `positive` and `negative`.
+
+    There is no `neutral` list, because a neutral row contributes to neither
+    (`FR3.6`). A label with no rows in range yields an empty array, never `null`
+    and never a padded top-N (`BR2.4`).
+    """
+
+    positive: Sequence[TermFrequencyEntry] = ()
+    negative: Sequence[TermFrequencyEntry] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the payload as JSON-ready primitives, in the pinned field order."""
+        return {
+            "positive": [entry.to_dict() for entry in self.positive],
+            "negative": [entry.to_dict() for entry in self.negative],
+        }
