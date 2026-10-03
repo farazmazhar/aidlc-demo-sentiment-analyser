@@ -83,7 +83,7 @@ These are the decisions a reader could not infer from the diff.
 | Whole-application line coverage | **97.06 %** (baseline 96.02 %); floor 80 %, enforced twice in `pyproject.toml` |
 | Statements measured | 884 (baseline 679) |
 | Missed lines | 26 (baseline 27) |
-| Scoped unit command | **66 passed**, exit 0 |
+| Scoped unit command | **67 passed**, exit 0 |
 | `ruff check app tests` | *All checks passed!* |
 | `ruff format --check app tests` | *30 files already formatted* |
 | Modules passing standalone | 15 of 15 |
@@ -158,7 +158,14 @@ unmet, and the correction is in § Post-review amendments below.
 
 ### (e) A defect surfaced while writing the traceability, and was fixed
 
-Tracing `NFR8.2` ("a failure with a machine code travels through the error envelope **and appears in the application log**, so the wire surface and the log agree") back to my own code found that the handlers logged only the exception text — `STORAGE_FAILURE` was on the wire but **not** in the log. Fixed in both handlers (`logger.error("analytics summary read failed (%s): %s", STORAGE_FAILURE, exc)`), with the reason recorded on the constant's comment, and covered by `test_a_storage_failure_is_logged_through_the_module_logger_with_its_code`, which I verified goes red when the fix is reverted. This is the only application-code change made after the initial implementation; it is why the final count is 190 rather than 189.
+Tracing `NFR8.2` ("a failure with a machine code travels through the error envelope **and appears in the application log**, so the wire surface and the log agree") back to my own code found that the handlers logged only the exception text — `STORAGE_FAILURE` was on the wire but **not** in the log. Fixed in both handlers (`logger.error("analytics summary read failed (%s): %s", STORAGE_FAILURE, exc)`), with the reason recorded on the constant's comment, and covered by `test_a_storage_failure_is_logged_through_the_module_logger_with_its_code`, which I verified goes red when the fix is reverted. This was the only application-code change made after the initial implementation.
+
+**The test counts in this document, all measured rather than carried forward:** the full
+suite is **192 passed** and the scoped command is **67 passed**. Earlier drafts of this
+section quoted 189, then 190, then 191 as the suite grew test by test; those were accurate
+at the moment each was written and are stale now, so they are superseded here rather than
+left to mislead. `§ R-01` deliberately still says 190 — that sentence describes what the
+suite did *before* R-01's test existed, which is the point it is making.
 ## Post-review amendments (iteration 1)
 
 ### R-01 — the index re-creation had no distinguishing test (fixed)
@@ -255,7 +262,7 @@ silently.
   but no test demonstrated it fires. Verified to have teeth: with the guard's
   `socket.connect` assignment removed, the test fails on `ConnectionRefusedError`.
 - **R-11** — every test count in this document was stale after tests were added.
-  Now 192 passed on the full suite and 66 on the scoped command, measured, not
+  Now 192 passed on the full suite and 67 on the scoped command, measured, not
   carried forward. The one surviving "190" is explicitly labelled as the *pre-fix*
   measurement, because that sentence describes what the suite did before R-01's
   test existed.
