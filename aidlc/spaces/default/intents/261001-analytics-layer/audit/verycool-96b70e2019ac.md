@@ -28662,3 +28662,90 @@
 **Prompt SHA-256**: f9e3742a0dc1c0ad5ca5eebd563624d015bdadf5642fb3721ef1b502ce170db2
 
 ---
+
+## Error Logged
+**Timestamp**: 2026-10-04T10:40:38Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage code-generation --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 2
+**Error**: Cannot start another review for "code-generation" because iteration 1 is still waiting for a verdict. Record that verdict, or repeat the same iteration with --retry-pending if the reviewer did not run.\n{"kind":"ask","ask_type":"guard-recovery","response_route":"execute-remedy","question":"The same guard state for \"code-generation\" has refused review-request 2 times. Choose one authority-preserving recovery action.","stage":"code-generation","unit":"u2-term-extraction","reason_codes":["REVIEW_VERDICT_PENDING"],"remedies":[{"op":"request-changes","action":"Ask \"What should change?\" for stage \"code-generation\" for Unit \"u2-term-extraction\" and end the turn. After the human answers, submit Request Changes with their exact text unchanged as the report reason; that unlocks revision and a fresh review.","requiresHuman":true,"executableNow":true,"interaction":"human-input"}]}
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T10:40:43Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage code-generation --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 1 --retry-pending
+**Error**: Refusing review retry for "code-generation": declared artifacts no longer match the bytes from REVIEW_REQUESTED iteration 1. A retry re-dispatches that exact request and cannot rebaseline changed content. Restore the requested artifact bytes before retrying.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:16:11Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:16:26Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state reject code-generation --unit u2-term-extraction --feedback=Nothing — the five findings are already fixed --user-input Request Changes --project-dir <project-dir>
+**Error**: Refusing to reject "code-generation": the guard-recovery choice is not revision feedback. Ask "What should change?", end the turn, and wait for the human's separate response before retrying.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:16:36Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Gate Rejected
+**Timestamp**: 2026-10-04T11:16:47Z
+**Event**: GATE_REJECTED
+**Stage**: code-generation
+**Unit**: u2-term-extraction
+**Gate Scope**: per-stage
+**Gate Stages**: code-generation
+**Feedback**: Nothing — the five findings are already fixed
+
+---
+
+## Stage Revising
+**Timestamp**: 2026-10-04T11:16:47Z
+**Event**: STAGE_REVISING
+**Stage**: code-generation
+**Unit**: u2-term-extraction
+**Gate Scope**: per-stage
+**Gate Stages**: code-generation
+**Revision count**: 1
+**Feedback**: Nothing — the five findings are already fixed
+
+---
+
+## Review Requested
+**Timestamp**: 2026-10-04T11:16:50Z
+**Event**: REVIEW_REQUESTED
+**Stage**: code-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Request Id**: review:3b6b447a57058594b6944432bb9c6837
+**Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Unit Source Fingerprint**: sha256:520b24a3e1e3a0213c6e23f3701a89d3483bcb5709eb3a6c77fc85672de9d4f4
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:20:43Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage code-generation --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 1 --verdict READY --project-dir <project-dir>
+**Error**: Refusing REVIEW_COMPLETED for "code-generation": workspace source changed after REVIEW_REQUESTED iteration 1. Restore the requested source state and re-dispatch the reviewer.
+
+---

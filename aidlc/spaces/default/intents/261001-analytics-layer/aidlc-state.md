@@ -35,7 +35,7 @@
 - **In Progress**: code-generation
 
 ## Runtime State
-- **Revision Count**: 0
+- **Revision Count**: 1
 - **Construction Checkpoints**: enabled
 - **Construction Iteration**: unit-major
 - **Construction Execution**: serial
@@ -126,7 +126,7 @@ Per unit: [TBD]
 <!-- Derived, engine-owned projection; routing ignores hand edits. -->
 | unit | owner | nfr-requirements | code-generation | gate |
 | --- | --- | --- | --- | --- |
-| u2-term-extraction | - | [x] | [ ] | [-] |
+| u2-term-extraction | - | [x] | [?] | [?] |
 | u4-platform-packaging | - | [ ] | [ ] | [ ] |
 | u1-analytics-slice | - | [ ] | [?] | [?] |
 | u3-analytics-view | - | [ ] | [ ] | [ ] |
@@ -136,7 +136,7 @@ Per unit: [TBD]
 - **Current Stage**: code-generation
 - **Next Stage**: build-and-test
 - **Status**: Running
-- **Last Updated**: 2026-10-04T09:44:57Z
+- **Last Updated**: 2026-10-04T11:16:47Z
 
 - **Construction Autonomy Mode**: autonomous
 
