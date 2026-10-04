@@ -297,7 +297,7 @@ rules:
     violation_behaviour: >
       An egress path or a hidden nondeterminism would break the offline guarantee
       the whole test suite depends on.
-    source: NFR1.2, FR4.4, AC4.1.4
+    source: NFR2.2, FR4.4, AC4.1.4
   - id: BR6.3
     statement: >
       Both operations are total: for every input in their declared domain they

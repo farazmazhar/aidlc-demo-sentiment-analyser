@@ -7,7 +7,7 @@
 - **Scope**: feature
 - **Start Date**: 2026-10-01T17:57:59Z
 - **State Version**: 8
-- **Active Agent**: aidlc-architect-agent
+- **Active Agent**: aidlc-developer-agent
 - **Worktree Path**:
 - **Bolt Refs**:
 - **Practices Affirmed Timestamp**: 2026-10-02T08:56:26Z
@@ -32,7 +32,7 @@
 ## Execution Plan Summary
 - **Total Stages**: 33
 - **Completed**: 17
-- **In Progress**: nfr-requirements
+- **In Progress**: code-generation
 
 ## Runtime State
 - **Revision Count**: 0
@@ -53,6 +53,8 @@
 
 
 - **Unit Ownership**: team
+
+
 
 
 
@@ -105,8 +107,8 @@
 Per unit: [TBD]
 - [S] functional-design — EXECUTE
 - [ ] nfr-requirements — EXECUTE
-- [ ] nfr-design — EXECUTE
-- [ ] infrastructure-design — EXECUTE
+- [S] nfr-design — EXECUTE
+- [S] infrastructure-design — EXECUTE
 - [-] code-generation — EXECUTE
 - [ ] build-and-test — EXECUTE
 - [ ] ci-pipeline — EXECUTE
@@ -122,23 +124,23 @@ Per unit: [TBD]
 
 ## Unit Progress
 <!-- Derived, engine-owned projection; routing ignores hand edits. -->
-| unit | owner | nfr-requirements | nfr-design | infrastructure-design | code-generation | gate |
-| --- | --- | --- | --- | --- | --- | --- |
-| u2-term-extraction | - | [ ] | [ ] | [ ] | [ ] | [ ] |
-| u4-platform-packaging | - | [ ] | [ ] | [ ] | [ ] | [ ] |
-| u1-analytics-slice | - | [ ] | [ ] | [ ] | [?] | [?] |
-| u3-analytics-view | - | [ ] | [ ] | [ ] | [ ] | [ ] |
+| unit | owner | nfr-requirements | code-generation | gate |
+| --- | --- | --- | --- | --- |
+| u2-term-extraction | - | [ ] | [ ] | [ ] |
+| u4-platform-packaging | - | [ ] | [ ] | [ ] |
+| u1-analytics-slice | - | [ ] | [?] | [?] |
+| u3-analytics-view | - | [ ] | [ ] | [ ] |
 
 ## Current Status
 - **Lifecycle Phase**: CONSTRUCTION
-- **Current Stage**: nfr-requirements
-- **Next Stage**: nfr-design
+- **Current Stage**: code-generation
+- **Next Stage**: build-and-test
 - **Status**: Running
-- **Last Updated**: 2026-10-04T09:31:37Z
+- **Last Updated**: 2026-10-04T09:38:24Z
 
 - **Construction Autonomy Mode**: autonomous
 
 ## Session Resume Point
 - **Last Completed Stage**: delivery-planning
-- **Next Action**: Execute NFR Requirements
+- **Next Action**: Execute Code Generation
 - **Pending Artifacts**: none

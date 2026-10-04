@@ -24,16 +24,19 @@
 | `collections.abc.Sequence` | the annotation on `significant_terms` | Stdlib typing support only. It documents that the operation filters a sequence and never tokenises (`BR1.2`). |
 | `__future__.annotations` | PEP 563 postponed evaluation | The codebase convention, pinned by `AC8.6.1`. |
 
-Nothing else. The module's complete import list is three lines, and
-`NFR1.3`'s isolation test is what keeps it that way: an import of anything from `app`
-fails the fan-out-0 assertion.
+Nothing else. The module's complete import list is three lines, and `NFR2.3` is what
+keeps it that way by naming the list rather than an enforcement test: **no test asserts
+the fan-out-0 property by name** in this repository, so the guarantee here is inspection
+of the import list, not an instrument. An earlier draft of this file cited `NFR1.3`'s
+isolation test, which does not exist; the review caught both the stale number and the
+invented instrument.
 
 ## What is deliberately NOT chosen, and why
 
 | Not chosen | Why not | Rule |
 |---|---|---|
-| **NLTK, spaCy, scikit-learn** | Each is a large dependency, several ship corpora, and they replace a rule the project has deliberately kept simple and ownable. The stopword set is 100-odd words in a module constant; a corpus download would also create the module's only egress path. | `C2`/`C-6` dependency cap; `NFR1.6`; `AC4.1.4` |
-| **A downloaded stopword corpus** | Would break the offline guarantee outright and add a network dependency to a leaf whose entire value is having none. | `NFR1.2`, `FR4.4`, `AC4.1.4` |
+| **NLTK, spaCy, scikit-learn** | Each is a large dependency, several ship corpora, and they replace a rule the project has deliberately kept simple and ownable. The stopword set is 100-odd words in a module constant; a corpus download would also create the module's only egress path. | `C-6` (the two-runtime-dependency cap, which is a **constraint**, not an NFR — an earlier draft of this row cited `NFR2.6`, which is the stopword rule, and the review caught it); `AC4.1.4` |
+| **A downloaded stopword corpus** | Would break the offline guarantee outright and add a network dependency to a leaf whose entire value is having none. | `NFR2.2`, `FR4.4`, `AC4.1.4` |
 | **Stemming or lemmatisation** | Changes what a "term" is, and the ranking it feeds is meant to report the words the text actually contains. Out of scope for this unit. | `FR4.1`–`FR4.3` scope |
 | **A regex alternative library** (`regex`, `re2`) | `re` handles `[a-z']+` exactly. Adding a package to compile one simple pattern is unjustifiable under the cap. | `C-6` |
 | **Precompiled token caching** (an LRU or a memo table) | Would add mutable module state to a unit specified as pure, and the call sites tokenise rows already in memory. A cache would be an optimisation with no measured problem behind it. | `BR6.2`, `BR6.3` |

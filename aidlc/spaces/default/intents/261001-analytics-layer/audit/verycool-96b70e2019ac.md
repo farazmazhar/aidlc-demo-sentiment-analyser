@@ -28148,3 +28148,225 @@
 **Duration ms**: 35
 
 ---
+
+## Error Logged
+**Timestamp**: 2026-10-04T09:36:37Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage nfr-requirements --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 1 --verdict NOT-READY --project-dir <project-dir>
+**Error**: Cannot record the verdict for "nfr-requirements" because its output documents changed after review iteration 1 started. Restore the bytes the reviewer was dispatched on and re-run that exact iteration; --retry-pending cannot rebaseline changed content.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T09:38:04Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Stage Skip
+**Timestamp**: 2026-10-04T09:38:09Z
+**Event**: STAGE_SKIPPED
+**Stage**: nfr-design
+**Reason**: Skipped by jump to code-generation (forward)
+**Skip Kind**: jump
+
+---
+
+## Stage Skip
+**Timestamp**: 2026-10-04T09:38:09Z
+**Event**: STAGE_SKIPPED
+**Stage**: infrastructure-design
+**Reason**: Skipped by jump to code-generation (forward)
+**Skip Kind**: jump
+
+---
+
+## Stage Jump
+**Timestamp**: 2026-10-04T09:38:09Z
+**Event**: STAGE_JUMPED
+**Direction**: FORWARD
+**Source**: nfr-requirements
+**Target**: code-generation
+**Scope**: feature
+**Details**: FORWARD jump from nfr-requirements to code-generation (3.5). Scope: feature.
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Stage Start
+**Timestamp**: 2026-10-04T09:38:09Z
+**Event**: STAGE_STARTED
+**Stage**: code-generation
+**Agent**: aidlc-developer-agent
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Unit Started
+**Timestamp**: 2026-10-04T09:38:24Z
+**Event**: UNIT_STARTED
+**Stage**: nfr-requirements
+**Unit**: u2-term-extraction
+**Run floor**: STAGE_JUMPED:2026-10-04T09:38:09Z#8
+
+---
+
+## Unit Completed
+**Timestamp**: 2026-10-04T09:38:24Z
+**Event**: UNIT_COMPLETED
+**Stage**: nfr-requirements
+**Unit**: u2-term-extraction
+**Run floor**: STAGE_JUMPED:2026-10-04T09:38:09Z#8
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T09:38:24Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage nfr-requirements --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 2
+**Error**: Cannot start review iteration 2 for "nfr-requirements" because the next iteration is 1. Retry with --iteration 1.
+
+---
+
+## Review Requested
+**Timestamp**: 2026-10-04T09:38:28Z
+**Event**: REVIEW_REQUESTED
+**Stage**: nfr-requirements
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:4fddabd5bbd0f87a0777fede92a086beec672fcff76b50473f33ede6419e940d
+**Request Id**: review:b21fa68696fbc4fdcc13660ffe7456e7
+
+---
+
+## Review Completed
+**Timestamp**: 2026-10-04T09:39:58Z
+**Event**: REVIEW_COMPLETED
+**Stage**: nfr-requirements
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Verdict**: NOT-READY
+**Request Fingerprint**: sha256:4fddabd5bbd0f87a0777fede92a086beec672fcff76b50473f33ede6419e940d
+**Artifact Fingerprint**: sha256:4fddabd5bbd0f87a0777fede92a086beec672fcff76b50473f33ede6419e940d
+**Request Id**: review:b21fa68696fbc4fdcc13660ffe7456e7
+**Review Record**: .aidlc-engine/reviews/nfr-requirements/units/u2-term-extraction/e7167cd5658684f6/1.json
+**Review Record Digest**: sha256:92c203692b81c7d442926fc7b479fc6c2a3ee4bc6fb38bb22824dcbd737a7fc8
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T09:40:12Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-04T09:40:47Z
+**Event**: SENSOR_FIRED
+**Fire id**: a5432fe0
+**Sensor ID**: upstream-coverage
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/security-requirements.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-04T09:40:47Z
+**Event**: SENSOR_PASSED
+**Fire id**: a5432fe0
+**Sensor ID**: upstream-coverage
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/security-requirements.md
+**Duration ms**: 30
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-04T09:40:47Z
+**Event**: SENSOR_FIRED
+**Fire id**: 383a829e
+**Sensor ID**: required-sections
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/security-requirements.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-04T09:40:47Z
+**Event**: SENSOR_PASSED
+**Fire id**: 383a829e
+**Sensor ID**: required-sections
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/security-requirements.md
+**Duration ms**: 32
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-04T09:40:47Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5cd11ce3
+**Sensor ID**: upstream-coverage
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/tech-stack-decisions.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-04T09:40:47Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5cd11ce3
+**Sensor ID**: upstream-coverage
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/tech-stack-decisions.md
+**Duration ms**: 30
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-04T09:40:47Z
+**Event**: SENSOR_FIRED
+**Fire id**: 914cc3b6
+**Sensor ID**: required-sections
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/tech-stack-decisions.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-04T09:40:48Z
+**Event**: SENSOR_PASSED
+**Fire id**: 914cc3b6
+**Sensor ID**: required-sections
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/tech-stack-decisions.md
+**Duration ms**: 30
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-04T09:40:48Z
+**Event**: SENSOR_FIRED
+**Fire id**: 035d6b0d
+**Sensor ID**: traceability
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/traceability.json
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-04T09:40:48Z
+**Event**: SENSOR_PASSED
+**Fire id**: 035d6b0d
+**Sensor ID**: traceability
+**Stage slug**: nfr-requirements
+**Output path**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/nfr-requirements/traceability.json
+**Duration ms**: 35
+
+---
