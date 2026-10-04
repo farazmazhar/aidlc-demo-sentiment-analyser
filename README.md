@@ -13,6 +13,15 @@ additive changes only.
 The HTTP data surface is versioned: `/v1` for the original routes, `/v2` for the
 analytics routes added later.
 
+## Documentation
+
+Project write-ups live in [`docs/`](docs/):
+
+- [`docs/SCOPES.md`](docs/SCOPES.md) — every AI-DLC intent that has run here and
+  what each one left behind
+- [`docs/OUTCOMES.md`](docs/OUTCOMES.md) — the handover pack for the analytics
+  layer: what was built, how it was verified, and what is still open
+
 ## Prerequisites
 
 - Python 3.11 or newer (developed and verified on 3.14)
