@@ -1,0 +1,10 @@
+{
+  "stage": "code-generation",
+  "unit": "u2-term-extraction",
+  "version": 1,
+  "writes": [
+    {
+      "path": "app/terms.py"
+    }
+  ]
+}
