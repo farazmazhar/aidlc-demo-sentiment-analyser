@@ -28889,3 +28889,168 @@
 **Session**: ses_f075f579cffeY1AuKi93ORtbeq
 
 ---
+
+## Stage Jump
+**Timestamp**: 2026-10-04T11:37:49Z
+**Event**: STAGE_JUMPED
+**Direction**: REDO
+**Source**: code-generation
+**Target**: code-generation
+**Scope**: feature
+**Details**: REDO jump from code-generation to code-generation (3.5). Scope: feature.
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Stage Start
+**Timestamp**: 2026-10-04T11:37:49Z
+**Event**: STAGE_STARTED
+**Stage**: code-generation
+**Agent**: aidlc-developer-agent
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Review Requested
+**Timestamp**: 2026-10-04T11:38:02Z
+**Event**: REVIEW_REQUESTED
+**Stage**: code-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Request Id**: review:530a3d861a066e91aef8e5054cb1a800
+**Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Unit Source Fingerprint**: sha256:520b24a3e1e3a0213c6e23f3701a89d3483bcb5709eb3a6c77fc85672de9d4f4
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:46:47Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Stage Jump
+**Timestamp**: 2026-10-04T11:46:59Z
+**Event**: STAGE_JUMPED
+**Direction**: REDO
+**Source**: code-generation
+**Target**: code-generation
+**Scope**: feature
+**Details**: REDO jump from code-generation to code-generation (3.5). Scope: feature.
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Stage Start
+**Timestamp**: 2026-10-04T11:46:59Z
+**Event**: STAGE_STARTED
+**Stage**: code-generation
+**Agent**: aidlc-developer-agent
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Review Requested
+**Timestamp**: 2026-10-04T11:47:17Z
+**Event**: REVIEW_REQUESTED
+**Stage**: code-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Request Id**: review:99d3467d807842195f207e2821f2541f
+**Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Unit Source Fingerprint**: sha256:520b24a3e1e3a0213c6e23f3701a89d3483bcb5709eb3a6c77fc85672de9d4f4
+
+---
+
+## Review Completed
+**Timestamp**: 2026-10-04T11:47:25Z
+**Event**: REVIEW_COMPLETED
+**Stage**: code-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Verdict**: READY
+**Request Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Artifact Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Request Id**: review:99d3467d807842195f207e2821f2541f
+**Request Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Unit Source Fingerprint**: sha256:520b24a3e1e3a0213c6e23f3701a89d3483bcb5709eb3a6c77fc85672de9d4f4
+**Review Record**: .aidlc-engine/reviews/code-generation/units/u2-term-extraction/2c0a2bf711895d5b/1.json
+**Review Record Digest**: sha256:47557c1771ab362c3c21c75e337a75a914b2bc2e9110d3b02c9aa65ccbc2cea6
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:47:31Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit start --stage code-generation --unit u2-term-extraction
+**Error**: Refusing to start unit "u2-term-extraction" for "code-generation": the engine currently routes a ask directive. Run the exact directive.stage/directive.unit pair returned by aidlc-orchestrate.ts next.
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:47:31Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit complete --stage code-generation --unit u2-term-extraction
+**Error**: Refusing to complete unit "u2-term-extraction" for "code-generation": it is not the active unit (no unit is active — start it first).
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:49:38Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:49:56Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Gate Rejected
+**Timestamp**: 2026-10-04T11:50:08Z
+**Event**: GATE_REJECTED
+**Stage**: code-generation
+**Unit**: u2-term-extraction
+**Gate Scope**: per-stage
+**Gate Stages**: code-generation
+**Feedback**: Nothing — the review is recorded and all findings are resolved
+
+---
+
+## Stage Revising
+**Timestamp**: 2026-10-04T11:50:08Z
+**Event**: STAGE_REVISING
+**Stage**: code-generation
+**Unit**: u2-term-extraction
+**Gate Scope**: per-stage
+**Gate Stages**: code-generation
+**Revision count**: 2
+**Feedback**: Nothing — the review is recorded and all findings are resolved
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:57:19Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:59:10Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
