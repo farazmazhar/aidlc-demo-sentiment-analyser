@@ -4,7 +4,7 @@
 > brownfield extension of a working local app.
 >
 > **Upstream this contract pins:** `inception/units-generation/unit-of-work.md` and
-> `unit-of-work-dependency.md` (the four units and the DAG, including the suppressed
+> `unit-of-work-dependency.md` (the four units and the DAG, including the declared
 > `U1 → U2` edge), `inception/domain-design/components.md` and `decisions.md` (the
 > twelve-row component catalogue and ADR-001…ADR-009), `inception/requirements-analysis/requirements.md`
 > (**including its Revision 2 corrections**), `inception/user-stories/stories.md`,
@@ -507,7 +507,7 @@ rules:
 
 ---
 
-## 4. Contract C3 — the `U1 → U2` inter-unit boundary (the suppressed edge)
+## 4. Contract C3 — the `U1 → U2` inter-unit boundary (the declared edge)
 
 **Provider:** `U2` (`u2-term-extraction`) · **Consumer:** `U1`
 (`AnalyticsRead`'s term ranking and the `/v2/analytics/terms` handler) ·

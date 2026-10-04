@@ -13,7 +13,7 @@ contract against the running routes, so that comparison is already done here.
 1. **Three contracts are pinned.** (a) The public `/v2` HTTP surface, consumed by
    the page's script. (b) The inter-unit `U3 → U1` boundary. (c) The inter-unit
    `U1 → U2` boundary that the DAG *suppresses* but the import graph requires —
-   pinning it is what stops the suppressed edge becoming a surprise.
+   pinning it is what stops the declared edge becoming a surprise.
 2. **Mechanism is HTTP/JSON for the public surface and plain Python calls for the
    two inter-unit boundaries**, the latter pinned as shared-schema contracts
    rather than OpenAPI, because inside one deployable an inter-unit boundary is an

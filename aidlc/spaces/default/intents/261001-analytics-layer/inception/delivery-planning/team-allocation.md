@@ -25,8 +25,8 @@ coordinate across teams, so this document is a single-mob allocation instead.
 | Bolt | Unit (directory) | Owner mob | Notes |
 |---|---|---|---|
 | 1 | `U1` — `u1-analytics-slice` (the walking skeleton) | `aidlc-developer-agent` | The slice is built before later Units; its integrated check and human checkpoint happen in Construction. |
-| 2 | `U2` — `u2-term-extraction` | `aidlc-developer-agent` | Must land before `U1`'s terms work completes (the suppressed `U1 → U2` edge). |
-| 3 | `U3` — `u3-analytics-view` | `aidlc-developer-agent` | Depends on Bolt 1. |
+| 2 | `U1` — `u1-analytics-slice` | `aidlc-developer-agent` | Depends on Bolt 1 (the declared `U1 → U2` edge). |
+| 3 | `U3` — `u3-analytics-view` | `aidlc-developer-agent` | Depends on Bolt 2. |
 | 4 | `U4` — `u4-platform-packaging` | `aidlc-developer-agent` | Independent of every other Bolt. |
 
 ## Concurrency and ownership

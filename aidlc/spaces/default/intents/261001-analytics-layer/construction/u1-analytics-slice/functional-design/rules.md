@@ -13,13 +13,12 @@
 > `BR5` the additive migration · `BR6` connection handling, concurrency and the
 > process-exposure boundary. Every rule names the requirement it comes from.
 >
-> **Pending a human ruling (R-06).** The four-decimal rounding **tie rule**
-> (half-up vs half-even) is **not settled** in this artifact — the human is choosing
-> it now. `BR2.2`/`BR2.3` pin four-decimal rounding only and carry a clearly-labelled
-> `RULED HALF-UP (R-06)` placeholder; the same placeholder is in
-> `functional-spec.md`. Until the placeholder is filled, no rule decides a tie, and
-> no pinned test may exercise one. This note is not a settled rule and must not be
-> read as one.
+> **Ruled (R-06) — this note is superseded.** The four-decimal rounding **tie
+> rule** was left open when this artifact was first drafted, and the human has
+> since **ruled it half-up** at this stage's gate. `BR2.2`/`BR2.3` now carry the
+> ruling inline rather than a placeholder, and the same is recorded in
+> `functional-spec.md`. The ruling also settles contract open point **O1**. A
+> pinned test may now exercise a tie.
 
 ```yaml
 rules:

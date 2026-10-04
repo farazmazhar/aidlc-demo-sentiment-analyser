@@ -40,26 +40,26 @@ paths.
 
 | Unit ID | Directory | Name | Kind | Depends on (Unit IDs) | Complexity |
 |---|---|---|---|---|---|
-| U1 | `u1-analytics-slice` | Analytics slice — migration, `/v2` surface, read layer | `service` | — (root; one real `U1 → U2` import edge suppressed — see below) | XL |
+| U1 | `u1-analytics-slice` | Analytics slice — migration, `/v2` surface, read layer | `service` | `U2` (declared import edge — see below) | XL |
 | U2 | `u2-term-extraction` | Term extraction and tokenizer promotion | `library` | — (root) | S |
 | U3 | `u3-analytics-view` | Analytics view in the existing page | `ui` | U1 | L |
 | U4 | `u4-platform-packaging` | Platform obligations | `packaging` | — (root) | M |
 
-**DAG-shape note.** `U1`, `U2` and `U4` are dependency-free roots; `U3` depends
-on `U1` alone. The DAG therefore admits several valid topological orders and is
-deliberately **not** a single chain (Q6). `U1` is the unit the `skeleton: on` rule
-identifies as the integrated slice; the ruling and its consequences — including a
-real `U1 → U2` import edge that the skeleton ruling suppresses from the edge block —
-are stated in full in `unit-of-work-dependency.md`.
+**DAG-shape note.** `U2` and `U4` are dependency-free roots; `U3` depends on `U1`,
+and `U1` depends on `U2`. The chain `U2 -> U1 -> U3` is the committed ordering, with
+`U4` independent of all three (Q6). **`U2` is the unit the `skeleton: on` rule now
+resolves first**, because `U1` declares its real dependency on `U2` in the edge
+block (recorded 2026-10-04). The ruling and its consequences are stated in full in
+`unit-of-work-dependency.md`.
 
-**The suppressed `U1 → U2` edge, from this unit's side.** U1's summary slice is
-dependency-free, but U1's **full scope** is not: its terms handler and
+**The `U1 → U2` edge, from this unit's side.** U1's summary slice is independent of
+U2 in what it computes, but U1's **full scope** is not: its terms handler and
 `AnalyticsRead`'s term ranking import U2's `TermExtraction` module. That is a real
-build/import edge (`components.md`: `AnalyticsRead -> TermExtraction`). It is not
-recorded as a `depends_on` entry because doing so would demote U1 from root and
-change the skeleton. It is represented — not hidden — in
-`unit-of-work-dependency.md` under **"The suppressed U1 → U2 edge"**, with the
-Delivery Planning obligation that U1's terms work must not be sequenced ahead of U2.
+build/import edge (`components.md`: `AnalyticsRead -> TermExtraction`), and as of
+2026-10-04 it is recorded as a `depends_on` entry rather than suppressed. Its
+consequence is that `U1` is no longer a root and `U2` is the unit the skeleton
+ruling resolves first. Stated in full in `unit-of-work-dependency.md` under
+**"The U1 → U2 edge"**.
 
 ---
 
@@ -131,12 +131,10 @@ tooling artifacts (U4). No analytics logic, SQL or view code is added to
   (ADR-005); no analytics table, migration or index is implied by them.
 - The terms handler and `AnalyticsRead`'s term ranking consume the `TermExtraction`
   module delivered by U2; that is the one cross-unit integration point this unit
-  carries, and it is a **real `U1 → U2` import edge**. It is deliberately **not**
-  recorded as a `depends_on` entry, because that would demote U1 from root and
-  change which unit the `skeleton: on` rule resolves first. It is represented in
-  `unit-of-work-dependency.md` under **"The suppressed U1 → U2 edge"**, with the
-  binding consequence that U1's terms work (`US3.1`, `US3.2`) must not be sequenced
-  ahead of U2. U1's summary slice does not need U2 and remains the skeleton.
+  carries, and it is a **real `U1 → U2` import edge**, declared in the edge block as
+  of 2026-10-04. The consequence is that U1's terms work (`US3.1`, `US3.2`) cannot
+  be sequenced ahead of U2, because the engine resolves U2 first by topology. See
+  `unit-of-work-dependency.md` under **"The U1 → U2 edge"**.
 - `/v1`, the `SentimentClient` interface and both adapters' behaviour are
   unchanged (NFR5); the envelope's shape is frozen and gains exactly one code.
 
@@ -168,6 +166,25 @@ runs of ASCII lowercase letters and apostrophes), the 3-character minimum, and t
 single versioned in-repo English stopword constant. The offline engine is refactored
 to call **only** `tokenize`, so its scoring behaviour is unchanged. This is unit
 (2) from the human ruling (Q2).
+
+**This unit is the walking skeleton as of 2026-10-04.** `U1`'s real dependency on
+this module is now declared in the edge block, which makes `U2` the root the
+`skeleton: on` rule resolves first. The honest consequence: the skeleton is now a
+fan-out-0 library whose slice is the module plus its parity test, **not** an
+end-to-end path through storage and HTTP. That is a reduction in what the skeleton
+proves for this scope, accepted in exchange for a build order the engine can
+enforce. See `unit-of-work-dependency.md` under **"The U1 → U2 edge"** and
+**"Skeleton slice"**.
+
+**Adoption note for this unit's Code Generation.** `app/terms.py` already exists in
+the repository: `U1` built it under the previously suppressed ordering, which is the
+unit-boundary violation disclosed in `u1-analytics-slice`'s plan and code summary.
+`U2` **adopts** that module rather than re-deriving it — the tokeniser, the
+3-character minimum and `STOPWORDS` are already present and are now this unit's to
+own. `U2` also inherits the stopword-membership decision that contract open point
+**O9** left to it; `U1` used a set and asserted one property of it, so a change here
+would move both analytics endpoints' output and require editing three `U1` manifest
+writes.
 
 ### Boundaries
 
@@ -214,7 +231,7 @@ promoted tokenizer.
   for U2, each stating why, rather than skipping them silently or fabricating a
   schema.
 - U2 itself has no dependency and no dependent's ordering is fixed by it beyond the
-  suppressed `U1 → U2` edge stated above and the offline engine's `tokenize` import.
+  declared `U1 → U2` edge stated above and the offline engine's `tokenize` import.
 
 ---
 
@@ -359,7 +376,7 @@ system and touches no application logic.
 | `AnalyticsRead` aggregate SQL, summary & terms computation | U1 | U3 (renders it over HTTP) |
 | `/v2` router and both handlers, error envelope | U1 | U3 (fetches it) |
 | R-01 connection fix, thread affinity | U1 | — |
-| `TermExtraction` tokenize + significant terms | U2 | U1 (terms endpoint — **suppressed `U1 → U2` edge**); U3 consumes the ranked result only over U1's HTTP response, not by import |
+| `TermExtraction` tokenize + significant terms | U2 | U1 (terms endpoint — **declared `U1 → U2` edge**); U3 consumes the ranked result only over U1's HTTP response, not by import |
 | Analytics view, shell, range/loading/error states, term-list containers (`US6.2` U3 half) | U3 | — |
 | Lockfile, verification script, scanners, LICENSE, ruff config, README | U4 | — |
 

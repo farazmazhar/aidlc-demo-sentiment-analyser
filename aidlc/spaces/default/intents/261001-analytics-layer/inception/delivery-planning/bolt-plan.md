@@ -20,11 +20,12 @@ directly rather than restating them:
   from, and the record that `AnalyticsRead` and `TermExtraction` are the new
   building blocks.
 - **`contract-summary.md`** (Contract Design) — the three pinned boundaries,
-  including the suppressed `U1 → U2` edge that forces Bolt 2's position in this
+  including the declared `U1 → U2` edge that places `U2` ahead of `U1` in this
   plan.
 - **`team-practices.md`** (Practices Discovery) — the affirmed `Way of Working`,
   `Walking Skeleton` and `Deployment` statements this plan follows, including that
-  `skeleton: on` makes Bolt 1 the integrated slice.
+  `skeleton: on` resolves the first DAG root as the skeleton — which this plan now
+  states is `u2-term-extraction`.
 
 > **Intent:** `261001-analytics-layer` · stage `delivery-planning` (inception).
 >
@@ -43,17 +44,17 @@ directly rather than restating them:
 >
 > **One Unit of Work per Bolt.** Each row bundles exactly one Unit (an **Unit of
 > Work** is a work-boundary inside the single app — not a separately deployable
-> service). `U1` is XL and `U3` is L, so Bolts 1 and 3 are substantial; splitting
-> `U1` would break the walking skeleton, and splitting `U3` would separate the view
+> service). `U1` is XL and `U3` is L, so Bolts 2 and 3 are substantial; splitting
+> `U1` would detach the integrated slice, and splitting `U3` would separate the view
 > from the only endpoint it reads.
 
 ## Sequence at a glance
 
 | Bolt | Unit (directory) | Kind | Walking skeleton? | Depends on | Mob |
 |---|---|---|---|---|---|
-| 1 | `U1` — `u1-analytics-slice` | `service` | **Yes — the depth-first end-to-end slice** | — (DAG root) | `aidlc-developer-agent` |
-| 2 | `U2` — `u2-term-extraction` | `library` | No | — (DAG root) | `aidlc-developer-agent` |
-| 3 | `U3` — `u3-analytics-view` | `ui` | No | Bolt 1 (`U1`) | `aidlc-developer-agent` |
+| 1 | `U2` — `u2-term-extraction` | `library` | **Yes — the resolved skeleton unit** | — (DAG root) | `aidlc-developer-agent` |
+| 2 | `U1` — `u1-analytics-slice` | `service` | No | Bolt 1 (`U2`) | `aidlc-developer-agent` |
+| 3 | `U3` — `u3-analytics-view` | `ui` | No | Bolt 2 (`U1`) | `aidlc-developer-agent` |
 | 4 | `U4` — `u4-platform-packaging` | `packaging` | No | — (DAG root) | `aidlc-developer-agent` |
 
 ## `skeleton: on` — the first resolved DAG Unit
@@ -62,24 +63,35 @@ This scope declares `skeleton: on` (`.aidlc/scopes/aidlc-feature.md`) and
 `memory/team.md` affirms a thin end-to-end slice first. The **walking skeleton**
 is the smallest working version of the whole path — built before the real feature
 breadth goes in, to prove the pieces connect. The runtime resolves the first Unit
-of the first sorted DAG batch, and that is **`u1-analytics-slice` (`U1`)**:
-`U1`, `U2` and `U4` are all dependency-free roots in the machine-readable edge
-block, and `u1-analytics-slice` sorts first among them.
+of the first sorted DAG batch, and that is **`u2-term-extraction` (`U2`)**:
+`U2` and `U4` are the dependency-free roots in the machine-readable edge block
+(`U1` declares its dependency on `U2` as of 2026-10-04), and `u2-term-extraction`
+sorts first among them.
 
-**Explicit statement: the first resolved DAG Unit is `u1-analytics-slice`.** Its
+> **The skeleton changed, and the honest consequence is recorded here.** Bolt
+> order previously placed `U1` first and made it the skeleton; `U2` was sequenced
+> second because the suppressed `U1 → U2` edge forced its position. Recording that
+> edge in the DAG is what makes the engine resolve `U2` first. But `U2` is a
+> fan-out-0 library, so the skeleton is now the tokeniser module plus its parity
+> test — **not** a path through storage and HTTP. This Bolt plan therefore places
+> `U2` first on topology while noting that the first *integrated* end-to-end path
+> is still Bolt 2 (`U1`), which runs immediately after.
+
+**Explicit statement: the first resolved DAG Unit is `u2-term-extraction`.** Its
 expected demo and its prerequisites are given in Bolt 1 below. A first
 design-stage review does not demonstrate a working skeleton; only the integrated
 end-to-end run does, and that run belongs to Construction.
 
 ---
 
-## Bolt 1 — `u1-analytics-slice` (`U1`) — the walking skeleton
+## Bolt 2 — `u1-analytics-slice` (`U1`)
 
 **Included Unit(s) of Work:** `U1` only.
 
-**Walking-skeleton marker:** yes — this is the smallest slice that runs the
-analytics path end to end (schema migration → `/v2` route → `AnalyticsRead`
-aggregate → summary region of the page).
+**Walking-skeleton marker:** no — but this is the **first integrated end-to-end
+path** the plan builds (schema migration → `/v2` route → `AnalyticsRead` aggregate
+→ summary region of the page). The Unit the `skeleton: on` rule resolves is `U2`
+in Bolt 1; see the note under **`skeleton: on` — the first resolved DAG Unit**.
 
 **Mob that owns it:** `aidlc-developer-agent` (the single AI mob; Team Formation
 was skipped in Ideation — see `team-allocation.md`).
@@ -115,7 +127,7 @@ was skipped in Ideation — see `team-allocation.md`).
 
 **Scope boundary that this Bolt does not claim.** `U1`'s full scope also carries
 the `/v2/analytics/terms` handler and the term-ranking part of `AnalyticsRead`.
-Those consume `U2`'s module and are governed by the suppressed `U1 → U2` edge
+Those consume `U2`'s module and are governed by the declared `U1 → U2` edge
 (below). Bolt 1 does not claim the terms path complete; that path is integrated
 once Bolt 2 lands. The summary path that the skeleton protects is genuinely
 independent of `U2`.
@@ -147,11 +159,14 @@ and human checkpoint belong to Construction.
 
 ---
 
-## Bolt 2 — `u2-term-extraction` (`U2`)
+## Bolt 1 — `u2-term-extraction` (`U2`) — the resolved walking skeleton
 
 **Included Unit(s) of Work:** `U2` only.
 
-**Walking-skeleton marker:** no.
+**Walking-skeleton marker:** yes — the Unit the `skeleton: on` rule resolves
+first, as of 2026-10-04. Its slice is the module and its parity test, not a path
+through storage and HTTP; see the note under **`skeleton: on` — the first resolved
+DAG Unit** for what that does and does not prove.
 
 **Mob that owns it:** `aidlc-developer-agent`.
 
@@ -181,10 +196,12 @@ ready for `U1`'s terms path to consume.
 after the refactor, plus term-extraction output over a seeded positive/negative
 fixture.
 
-**Why it is sequenced second.** `U1`'s terms handler and `AnalyticsRead`'s term
-ranking import this module. The suppressed `U1 → U2` edge (below) means `U1`
-cannot finish its terms work until Bolt 2 lands, so Bolt 2 may not be deferred
-behind Bolt 1's terms capability.
+**Why it is sequenced first.** `U1`'s terms handler and `AnalyticsRead`'s term
+ranking import this module, and that dependency is now a declared `depends_on`
+entry rather than a suppression. It was previously sequenced second with the
+ordering placed on this plan as a prose obligation — an obligation that could not
+bind the engine, which is why `U1` was walked first and authored `app/terms.py`.
+Recording the edge makes `U1`'s position depend on this module structurally.
 
 ---
 
@@ -228,7 +245,7 @@ exercise line over the served page.
 
 **Why it is sequenced third.** `U3` depends on `U1` alone: it fetches `U1`'s `/v2`
 responses over HTTP and never imports `U2`'s module. It cannot be resolved before
-Bolt 1.
+Bolt 2.
 
 ---
 
@@ -284,21 +301,18 @@ suite to run, and because no other Bolt waits on it.
   (Bolt 4) have no dependency on `U1` or on each other, so in principle they could
   be built alongside Bolt 1. With one developer and one mob this changes nothing
   in practice; it is recorded so the DAG's freedom is not mistaken for a mandate
-  to serialise. The one real constraint on that freedom is the suppressed
+  to serialise. The one real constraint on that freedom is the declared
   `U1 → U2` edge below.
-- **The suppressed `U1 → U2` edge — a sequencing constraint on `U1`'s terms work.**
+- **The declared `U1 → U2` edge — a sequencing constraint on `U1`'s terms work.**
   `U1`'s terms handler and `AnalyticsRead`'s term ranking import `U2`'s
   `TermExtraction` module. This is a real build/import dependency that
   `unit-of-work-dependency.md` records in prose rather than as a `depends_on`
-  entry, because drawing it would demote `u1-analytics-slice` from a root and
-  change which Unit the `skeleton: on` rule resolves first. **Consequence for this
-  plan: `U1`'s terms work (`US3.1`, `US3.2`, and the term-list part of `US6.2`)
-  must not be sequenced ahead of `U2`.** Bolt 2 may proceed in parallel with
-  Bolt 1's summary path, but `U1`'s terms path is complete only once Bolt 2
-  exists. The summary slice that Bolt 1 proves is independent of `U2`, which is
-  what keeps `U1` a valid skeleton.
+  entry, and no longer suppressed. **Consequence for this plan: `U1`'s terms work
+  (`US3.1`, `US3.2`, and the term-list part of `US6.2`) cannot be sequenced ahead
+  of `U2` — the topology forbids it.** `U1` is Bolt 2 and `U2` is Bolt 1, so this
+  is satisfied structurally rather than by a plan obligation.
 - **No formal scoring model underlies this order.** The rationale — risk-first,
-  walking-skeleton-first, and the suppressed-edge constraint — is argued in
+  walking-skeleton-first, and the declared-edge constraint — is argued in
   `risk-and-sequencing-rationale.md`.
 
 ## Traceability

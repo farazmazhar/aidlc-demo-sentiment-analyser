@@ -20,28 +20,45 @@ Two heuristics were used together, and they agree on the first Bolt:
   single-threaded test. Both live in `U1`, so risk-first puts `U1` first.
 - **Walking skeleton first.** The **walking skeleton** is the smallest working
   end-to-end slice built before the feature breadth goes in, to prove the pieces
-  connect. This scope declares `skeleton: on`, and the runtime resolves
-  `u1-analytics-slice` as the first Unit. It is a genuine slice — schema migration
-  → `/v2` route → `AnalyticsRead` aggregate → summary region of the page — not a
-  bare layer or a design document.
+  connect. This scope declares `skeleton: on`, and the runtime now resolves
+  `u2-term-extraction` as the first Unit — a change made on 2026-10-04 when the
+  `U1 → U2` edge was recorded in the DAG. `U1` remains a genuine end-to-end slice
+  — schema migration → `/v2` route → `AnalyticsRead` aggregate → summary region of
+  the page — and it is the first *integrated* path this plan builds, in Bolt 2.
 
-The two agree, and that is the strongest reason for the order: `U1` is
-simultaneously the riskiest and the skeleton, so it is first on both grounds.
-Every other Bolt either consumes it (`U3`) or is independent of it (`U2`, `U4`).
+**The two arguments now diverge, and that is recorded rather than smoothed over.**
+Risk-first puts `U1` first (it carries the R-01 fix and the migration). Walking-
+skeleton-first puts `U2` first, because that is what the recorded topology resolves.
+The plan follows the topology, because the alternative — a skeleton the engine
+cannot honour — is what produced the `app/terms.py` violation this record now
+carries. The risk-first argument still governs `U1`'s content; it no longer governs
+its position.
 
 ## Why each later Bolt sits where it does
 
-- **Bolt 2 — `U2` (`u2-term-extraction`).** The tokenizer promotion and
-  significance filter are ordered second because of the **suppressed `U1 → U2`
-  edge**. `U1`'s terms handler and `AnalyticsRead`'s term ranking import `U2`'s
-  `TermExtraction` module. That is a real build/import dependency, recorded in
-  `unit-of-work-dependency.md` in prose rather than as a `depends_on` entry,
-  because drawing it as an edge would demote `u1-analytics-slice` from a DAG root
-  and change which Unit the `skeleton: on` rule resolves first. The suppression is
-  a representation choice, not a claim of independence: **`U1`'s terms work
-  (`US3.1`, `US3.2`, the term-list part of `US6.2`) must not be sequenced ahead of
-  `U2`.** Placing `U2` second is how the plan satisfies that obligation while
-  still building `U1` first.
+- **Bolt 1 — `U2` (`u2-term-extraction`).** The tokenizer promotion and
+  significance filter are ordered **first**, and this was changed on 2026-10-04.
+  `U1`'s terms handler and `AnalyticsRead`'s term ranking import `U2`'s
+  `TermExtraction` module. That dependency is now recorded as a `depends_on` entry
+  in `unit-of-work-dependency.md` rather than suppressed, which demotes
+  `u1-analytics-slice` from a DAG root and makes `U2` the Unit the `skeleton: on`
+  rule resolves first.
+
+  **Why it moved.** Previously `U2` was sequenced second and the constraint that
+  `U1`'s terms work must not precede it was placed on this plan as a prose
+  obligation. That obligation could not bind the engine: the engine resolves the
+  first unsettled Unit from the edge block and does not consume `bolt-plan.md` for
+  walk order. The result was that `U1` was walked first, built its terms path, and
+  authored `app/terms.py` — a module assigned to `U2`. The dependency existed
+  anyway; only the ordering had been suppressed. Recording the edge makes the
+  obligation structural, at the cost of the skeleton becoming a library rather
+  than an integrated slice.
+
+- **Bolt 2 — `U1` (`u1-analytics-slice`).** The analytics slice, now ordered after
+  `U2` because of the declared edge. **`U1`'s terms work (`US3.1`, `US3.2`, the
+  term-list part of `US6.2`) is integrated here and imports `U2`'s module, so it
+  can no longer be sequenced ahead of `U2` — the topology forbids it.** `U1`'s
+  summary path is the first *integrated* end-to-end path this plan builds.
 - **Bolt 3 — `U3` (`u3-analytics-view`).** The completed view depends on `U1` and
   consumes `U2`'s output only indirectly, through `U1`'s `/v2/analytics/terms`
   HTTP response; it never imports `U2`. It is last of the three feature Bolts
@@ -59,15 +76,14 @@ The chosen order (`U1 → U2 → U3 → U4`) **is** a valid topological order of
 machine-readable edge block: the only edge in that block is `u3-analytics-view →
 u1-analytics-slice`, and `U1` precedes `U3`. No deviation is hidden there.
 
-The deviation to flag is against the **real** dependency graph, not the recorded
-one. Because of the suppressed `U1 → U2` import, `U1`'s full scope depends on
-`U2`, yet Bolt 1 is built before Bolt 2. That is justified only because the
-dependency is partial: it constrains `U1`'s **terms** path, while the **summary**
-path the skeleton protects is genuinely independent of `U2` (the summary buckets
-and averages stored rows and never extracts terms). The plan therefore builds
-`U1`'s summary slice first, and `U1`'s terms capability is integrated once Bolt 2
-exists. Building `U1` fully first — including its terms path — would violate the
-real edge even though the edge block permits it; this plan does not do that.
+**There is no longer a deviation to flag.** The previously recorded deviation was
+that `U1`'s full scope depends on `U2` while `U1` was built first. The `U1 → U2`
+edge is now recorded in the DAG, so `U2` precedes `U1` in both the topology and
+this plan and the deviation is closed rather than justified. The dependency remains
+partial in its *effect* — it constrains `U1`'s **terms** path, while the **summary**
+path is genuinely independent of `U2` (the summary buckets and averages stored rows
+and never extracts terms) — which is why `U1`'s summary slice can still be the
+first integrated path to run once `U2` exists.
 
 ## Why no formal scoring model was applied
 
@@ -75,9 +91,9 @@ Three named heuristics were considered and each was set aside:
 
 - **Cohn (relative risk/value story-point ranking).** Cohn's approach sequences
   work by a coarse relative ranking of value and risk rather than a weighted
-  formula. It was not used because the ranking it would produce is already forced:
-  `U3` cannot precede `U1`, and the only genuinely open choices are where `U2` and
-  `U4` sit — both of which are argued above on risk and on the suppressed edge.
+  formula. It was not used because the ranking it would produce is already forced
+  by topology: `U2` precedes `U1`, `U1` precedes `U3`, and the only genuinely open
+  choice is where `U4` sits — argued above on risk.
 - **Reinertsen CD3 (Cost of Delay ÷ Duration).** CD3 scores a job by the money its
   delay costs divided by how long it takes. It was not used because nothing in
   this intent has a measurable cost of delay: it is a single-user localhost tool

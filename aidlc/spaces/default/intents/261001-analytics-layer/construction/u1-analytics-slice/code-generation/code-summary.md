@@ -149,7 +149,7 @@ The remaining two steps were run verbatim and pass: `python -m pytest -q` → **
 
 ### (d) The tokeniser overlaps `u2-term-extraction` — flagged, not silently absorbed
 
-`contract-summary.md` §4 (contract **C3**) attributes the tokeniser to `U2`, and `nfr-requirements/tech-stack-decisions.md` records `app/terms.py` as U2's module with "this unit consumes it, does not re-implement it". Plan step 5 nevertheless assigns the promotion to this unit, and the scoped test command records `tests/test_terms.py` here — so I built it, and the delivery ordering recorded in `unit-of-work-dependency.md` (the suppressed `U1 → U2` edge,
+`contract-summary.md` §4 (contract **C3**) attributes the tokeniser to `U2`, and `nfr-requirements/tech-stack-decisions.md` records `app/terms.py` as U2's module with "this unit consumes it, does not re-implement it". Plan step 5 nevertheless assigns the promotion to this unit, and the scoped test command records `tests/test_terms.py` here — so I built it, and the delivery ordering recorded in `unit-of-work-dependency.md` (the `U1 → U2` edge as it stood when this code was written, then suppressed;
 batch 1) did not put `u2-term-extraction` in front of this module. An earlier draft of this
 line called that ordering "moot"; **that claim is withdrawn** — the obligation is live and
 unmet, and the correction is in § Post-review amendments below.

@@ -1,27 +1,30 @@
-<!-- INVARIANT: examples are single-line HTML comments so a fresh template parses to total=0 (MEMORY_EMPTY). Do NOT un-comment or split across lines. t100 guards this. -->
-> This file is kept up to date automatically while the stage runs. Add observations at the review step, not by editing here directly.
+# Stage Diary — infrastructure-design (re-run, `u1-analytics-slice`)
 
 ## Interpretations
-<!-- example: 2026-05-29T10:14:32Z — chose REST over GraphQL; the consuming team only needs CRUD, revisit if subscriptions land -->
+- 2026-10-04T08:44:00Z — read the "no infrastructure" claim as something to **re-verify rather than
+  restate**, since it is the whole content of this stage. Checked for `Dockerfile`, `cdk.json`
+  and `.github/workflows`: none exists. The claim holds, and four artifacts record it per element
+  with the rule that rules each out.
+- 2026-10-04T08:46:00Z — read the 25 `N/A` rows as the artifact's substance rather than as
+  padding. Each names a rule that makes the element inapplicable; the 10 `OK` rows map to real
+  recorded facts — the startup bind enforcement, the additive migration, and the absence of a
+  monitoring tier — not to invented infrastructure.
 
 ## Deviations
-<!-- example: 2026-05-29T10:14:32Z — skipped the optional caching layer the stage prose suggested; the dataset is small enough that it adds risk -->
+- 2026-10-04T08:48:00Z — **none.** No stale content found. The R-04 correction from the original
+  review is intact: the skip condition reads "**largely applies**" rather than "is met", because
+  the unit does change two startup behaviours even though it provisions nothing.
 
 ## Tradeoffs
-<!-- example: 2026-05-29T10:14:32Z — picked TDD over BDD this run; the team is unit-first and the domain is well-understood -->
+- 2026-10-04T08:50:00Z — left the third `OK` mapping alone. `NFR8.1`–`NFR8.3` are marked `OK`
+  with the target "no monitoring tier is provisioned; the module-logger failure records stand in".
+  That reads oddly — `OK` against an absence — but it is the correct status: the **requirement**
+  is satisfied by the substitute, and marking it `N/A` would say the requirement does not apply,
+  which is false. The review caught the inverse of this in the original run and it stays fixed.
 
 ## Open questions
-<!-- example: 2026-05-29T10:14:32Z — confirm the retention window with compliance before the next stage hardens the schema -->
-
-## Interpretations
-- 2026-10-03T00:00:00Z — read a stage that owes artifacts but finds nothing to design as owing an honest record of the absence, not invented content; the artifacts state per element what is not provisioned and why.
-
-## Deviations
-- 2026-10-03T00:00:00Z — recorded the skip condition as "largely applies" rather than "met", because the unit does change two startup behaviours even though it provisions nothing.
-
-## Tradeoffs
-- 2026-10-03T00:00:00Z — routed the pipeline work to the packaging unit and the CI Pipeline stage rather than drafting a pipeline here, accepting an artifact that says "no pipeline" in exchange for not duplicating or contradicting a later stage.
-- 2026-10-03T00:00:00Z — marked the infra-bearing NFR children OK rather than N/A, so the traceability file agrees with its own reverse array instead of inverting the mapping.
-
-## Open questions
-- 2026-10-03T00:00:00Z — the secret scanner and dependency audit remain packaging-unit deliverables; nothing in this unit depends on them landing first.
+- 2026-10-04T08:52:00Z — this stage routed the pipeline work to `u4-platform-packaging` and the
+  CI Pipeline stage, and `cicd-pipeline.md:67` names secret scanning and the dependency audit as
+  packaging-unit deliverables rather than instruments this unit can run. `u4` is one of the three
+  unbuilt Units, so those instruments still do not exist. The routing was right; the owner has
+  not run yet.

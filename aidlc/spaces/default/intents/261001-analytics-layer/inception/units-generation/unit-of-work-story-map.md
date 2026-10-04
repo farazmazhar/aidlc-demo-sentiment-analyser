@@ -86,7 +86,7 @@ dependencies. It is not a cross-unit plan and does not rank units.
 The migration and the connection/read foundation precede the endpoints they
 support: `US5.1` (with `US5.2`) and `US1.1` first; then `US2.1 → US2.2 → US2.3` and
 `US2.4`; the terms endpoint `US3.1 → US3.2` **follows U2's extraction interface**
-(the real, suppressed `U1 → U2` edge — see `unit-of-work-dependency.md`) and precedes
+(the real, **declared** `U1 → U2` edge — see `unit-of-work-dependency.md`) and precedes
 the slice's view region (`US6.2`'s U1 half, the series + breakdown). `US7.7` (harness)
 precedes `US1.2` (the concurrency fix it proves); `US7.6` is independent of the data
 path. The NFR stories `US8.1`–`US8.9` are verified as the capabilities they protect
@@ -156,9 +156,9 @@ on `US2.1`/`US3.1`/`US6.1`, and the `US5.1 → US7.9` and `US4.2 → US7.9` edge
 turned into a `u4-platform-packaging` edge, because the human ruled the platform
 unit independent (Q6).
 
-**Real dependency suppressed from the DAG.** U1's terms work (`US3.1`, `US3.2`) — and
+**Real dependency, declared in the DAG.** U1's terms work (`US3.1`, `US3.2`) — and
 the term-ranking part of `US6.2` — imports U2's `TermExtraction` module. That is a
 real `U1 → U2` build edge, deliberately not recorded as a `depends_on` entry so U1
 stays the `skeleton: on` integrated slice. It is stated in full — with the obligation
 that Delivery Planning must not sequence U1's terms work ahead of U2 — in
-`unit-of-work-dependency.md` under **"The suppressed U1 → U2 edge"**.
+`unit-of-work-dependency.md` under **"The U1 → U2 edge"**.

@@ -7,7 +7,7 @@
 - **Scope**: feature
 - **Start Date**: 2026-10-01T17:57:59Z
 - **State Version**: 8
-- **Active Agent**: aidlc-operations-agent
+- **Active Agent**: aidlc-architect-agent
 - **Worktree Path**:
 - **Bolt Refs**:
 - **Practices Affirmed Timestamp**: 2026-10-02T08:56:26Z
@@ -15,11 +15,11 @@
 ## Scope Configuration
 - **Stages to Execute**: 0.1, 0.2, 0.3, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
 - **Stages to Skip**: none
-- **Depth**: Standard
+- **Depth**: Minimal
 - **Test Strategy**: Standard
 - **Review Override**: 
 - **Guard Policy**: relaxed (from scope feature)
-- **Sensors**: on (from scope feature)
+- **Sensors**: off (set by you)
 - **Learnings**: on (from scope feature)
 - **Summary Confirmation**: off (set by you)
 
@@ -31,8 +31,8 @@
 
 ## Execution Plan Summary
 - **Total Stages**: 33
-- **Completed**: 26
-- **In Progress**: none
+- **Completed**: 17
+- **In Progress**: nfr-requirements
 
 ## Runtime State
 - **Revision Count**: 0
@@ -54,14 +54,24 @@
 
 - **Unit Ownership**: team
 
+
+
+
+
+
+
+
+
+
+
 ## Phase Progress
 <!-- Status values: Pending, Active, Verified, Skipped -->
 
 - **Initialization**: Verified
 - **Ideation**: Verified
 - **Inception**: Verified
-- **Construction**: Verified
-- **Operation**: Verified
+- **Construction**: Active
+- **Operation**: Pending
 
 ## Stage Progress
 <!-- Checkbox states: [ ] not started, [-] in progress, [?] awaiting approval (gate open), [R] revising (user rejected gate), [x] completed, [S] skipped via --stage/--phase jump -->
@@ -94,32 +104,41 @@
 ### CONSTRUCTION PHASE
 Per unit: [TBD]
 - [S] functional-design — EXECUTE
-- [S] nfr-requirements — EXECUTE
-- [S] nfr-design — EXECUTE
-- [S] infrastructure-design — EXECUTE
-- [S] code-generation — EXECUTE
-- [x] build-and-test — EXECUTE
-- [x] ci-pipeline — EXECUTE
+- [ ] nfr-requirements — EXECUTE
+- [ ] nfr-design — EXECUTE
+- [ ] infrastructure-design — EXECUTE
+- [-] code-generation — EXECUTE
+- [ ] build-and-test — EXECUTE
+- [ ] ci-pipeline — EXECUTE
 
 ### OPERATION PHASE
-- [x] deployment-pipeline — EXECUTE
-- [x] environment-provisioning — EXECUTE
-- [x] deployment-execution — EXECUTE
-- [x] observability-setup — EXECUTE
-- [x] incident-response — EXECUTE
-- [x] performance-validation — EXECUTE
-- [x] feedback-optimization — EXECUTE
+- [ ] deployment-pipeline — EXECUTE
+- [ ] environment-provisioning — EXECUTE
+- [ ] deployment-execution — EXECUTE
+- [ ] observability-setup — EXECUTE
+- [ ] incident-response — EXECUTE
+- [ ] performance-validation — EXECUTE
+- [ ] feedback-optimization — EXECUTE
+
+## Unit Progress
+<!-- Derived, engine-owned projection; routing ignores hand edits. -->
+| unit | owner | nfr-requirements | nfr-design | infrastructure-design | code-generation | gate |
+| --- | --- | --- | --- | --- | --- | --- |
+| u2-term-extraction | - | [ ] | [ ] | [ ] | [ ] | [ ] |
+| u4-platform-packaging | - | [ ] | [ ] | [ ] | [ ] | [ ] |
+| u1-analytics-slice | - | [ ] | [ ] | [ ] | [?] | [?] |
+| u3-analytics-view | - | [ ] | [ ] | [ ] | [ ] | [ ] |
 
 ## Current Status
-- **Lifecycle Phase**: OPERATION
-- **Current Stage**: feedback-optimization
-- **Next Stage**: none
-- **Status**: Completed
-- **Last Updated**: 2026-10-03T18:32:38Z
+- **Lifecycle Phase**: CONSTRUCTION
+- **Current Stage**: nfr-requirements
+- **Next Stage**: nfr-design
+- **Status**: Running
+- **Last Updated**: 2026-10-04T09:31:37Z
 
 - **Construction Autonomy Mode**: autonomous
 
 ## Session Resume Point
-- **Last Completed Stage**: feedback-optimization
-- **Next Action**: Workflow complete
+- **Last Completed Stage**: delivery-planning
+- **Next Action**: Execute NFR Requirements
 - **Pending Artifacts**: none

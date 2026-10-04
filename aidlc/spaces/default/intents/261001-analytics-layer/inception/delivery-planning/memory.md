@@ -27,3 +27,59 @@
 ## Open questions
 - 2026-10-02T15:00:00Z — the four carried-forward contract points (the rounding tie rule, the stopword list and module filename, the analytics-partial surface, and the request timeout) are registered for Construction rather than resolved here.
 - 2026-10-02T15:00:00Z — whether the analytics-half of the skeleton's end-to-end proof should extend the verification command once FR7.2's script exists, or stay a manual exercise.
+
+## Re-run — 2026-10-04, the Bolt-ordering correction
+
+## Interpretations
+- 2026-10-04T08:45:00Z — read the re-run's purpose as **fixing the mechanism, not the
+  record**. `bolt-plan.md` already stated the correct ordering ("Bolt 2 may not be
+  deferred behind Bolt 1's terms capability"), and the stage definition states plainly
+  that the engine does not consume `bolt-plan.md` for walk order. So renumbering the
+  Bolts would have produced a better-looking plan that changed nothing at runtime.
+- 2026-10-04T08:48:00Z — read the suppressed `U1 → U2` edge as the **cause** of the
+  violation rather than a mitigation of it. The suppression kept `u1-analytics-slice` a
+  root so the skeleton ruling could name it first; the engine then walked U1, whose
+  approved plan told it to build the terms path, and U1 authored `app/terms.py`. The
+  suppression did not prevent the dependency — it prevented the ordering while allowing
+  the violation.
+
+## Deviations
+- 2026-10-04T08:50:00Z — **the `u1-analytics-slice -> u2-term-extraction` edge is
+  recorded in the machine-readable block**, replacing the suppression. This is a change
+  to a human-ruled artifact (Q5 fixed `u1-analytics-slice` as the integrated slice) and
+  it was made by explicit human decision on 2026-10-04, offered as the only option that
+  changes engine behaviour.
+- 2026-10-04T08:52:00Z — **the walking skeleton is now `u2-term-extraction`**, and this
+  is recorded as a cost rather than presented as an improvement. U2 is a fan-out-0
+  library, so the skeleton is its parity test rather than a path through storage and
+  HTTP. `u1-analytics-slice` remains the first *integrated* end-to-end path and runs
+  immediately after.
+- 2026-10-04T08:54:00Z — corrected **every** artifact that asserted the suppression as
+  current: `unit-of-work-dependency.md` (including the batch listing, the prose DAG, the
+  skeleton section and the constraints list), `unit-of-work.md`, `bolt-plan.md`,
+  `risk-and-sequencing-rationale.md`, `team-allocation.md`,
+  `external-dependency-map.md`, `unit-of-work-story-map.md`, `contract-summary.md`,
+  `contract-design-questions.md` and `delivery-planning-questions.md`. Ten files, because
+  leaving any one of them asserting a suppression that no longer exists is the exact
+  defect class this correction exists to remove.
+
+## Tradeoffs
+- 2026-10-04T08:56:00Z — accepted a weaker skeleton for a structural ordering guarantee.
+  The alternative was keeping a strong skeleton on paper while the engine inverted the
+  one dependency that mattered.
+- 2026-10-04T08:58:00Z — did **not** renumber `U1`/`U2` identities. The units keep their
+  names and their Q2 decomposition; only their position changes. Renaming would have
+  invalidated every artifact that references them for no benefit.
+- 2026-10-04T09:00:00Z — recorded the cost explicitly in the plan itself rather than only
+  in this diary, so a reader opening `bolt-plan.md` at the gate sees that the skeleton
+  changed and what it now fails to prove.
+
+## Open questions
+- 2026-10-04T09:02:00Z — `u1-analytics-slice` is already built against the previous
+  ordering and `app/terms.py` already exists. Recording the edge fixes the *order* going
+  forward; it does not unbuild U1. `u2-term-extraction` must therefore **adopt** the
+  existing module rather than re-derive it, which is recorded in `unit-of-work.md`'s U2
+  section.
+- 2026-10-04T09:04:00Z — the recorded verification command and the CI pipeline were
+  designed against the old Bolt order. Neither depends on which unit runs first, so
+  neither needs changing; this is noted so a later reader does not go looking.

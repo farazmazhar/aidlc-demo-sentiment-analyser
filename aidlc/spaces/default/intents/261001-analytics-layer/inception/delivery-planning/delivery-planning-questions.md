@@ -45,7 +45,7 @@ and only `U1`'s terms handler does.
 **Scoring.** No formal WSJF model is applied. With one developer and four Bolts,
 a weighted score would produce a ranking that the DAG already forces — `U3`
 cannot precede `U1`, so the only real choices are where `U2` and `U4` sit, and
-both are argued above on risk and on the suppressed edge.
+both are argued above on risk and on the declared edge.
 
 **Parallelism.** `U2` and `U4` have no dependency on `U1` or on each other, so in
 principle they could be built alongside Bolt 1. With one developer this changes
@@ -70,10 +70,10 @@ C. Other (please specify)
 
 - **Four Bolts, one Unit each.** A Bolt is one build pass over a piece of the work, ending in something that runs.
 - **Bolt 1 is the walking skeleton** — `u1-analytics-slice`: the additive v3 → v4 migration with its three named indexes, the `/v2` router and summary endpoint, the `AnalyticsRead` module, the R-01 connection fix, and the summary region of the view, running end to end. It is ordered first because it is the skeleton and because it carries both riskiest pieces: a migration that can lose data, and the cross-thread defect.
-- **Bolt 2 is term extraction**, ordered second because the suppressed `U1 → U2` edge means `U1`'s terms handler imports it, so `U1` cannot finish its terms work until this lands.
+- **Bolt 1 is term extraction**, ordered first because the declared `U1 → U2` edge means `U1`'s terms handler imports it, so `U1` cannot finish its terms work until this lands.
 - **Bolt 3 completes the view**, depending on Bolt 1.
 - **Bolt 4 is the platform packaging** — lockfile, verification script, scanning, audit, `LICENSE`, `TID251`, `target-version` and the README. Independent of everything, placed last because its script is more useful once a full suite exists.
-- **No formal scoring model was applied.** With one developer and four Bolts, WSJF, Cohn and Reinertsen CD3 would all reproduce an order the dependency DAG already forces; the only genuine choices are where Bolts 2 and 4 sit, and both are argued on risk and on the suppressed edge.
+- **No formal scoring model was applied.** With one developer and four Bolts, WSJF, Cohn and Reinertsen CD3 would all reproduce an order the dependency DAG already forces; the only genuine choice is where Bolt 4 sits, and it is argued on risk. The edge is now declared rather than suppressed.
 - **`U2` and `U4` are parallel-capable.** With one developer this changes nothing in practice, and it is recorded so the DAG's freedom is not mistaken for a mandate to serialise.
 - **Every Bolt is owned by `aidlc-developer-agent`**, because Team Formation was skipped in Ideation and there is no second team.
 - **No external dependencies.** The map is near-empty and says so rather than inventing entries; the only gating relationship named is the internal suppressed `U1 → U2` edge.

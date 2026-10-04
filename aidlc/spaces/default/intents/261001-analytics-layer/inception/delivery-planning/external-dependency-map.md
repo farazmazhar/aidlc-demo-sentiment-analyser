@@ -36,11 +36,12 @@ external dependency:
 
 | Constraint | From → To | Type | Bolt affected | Handled by |
 |---|---|---|---|---|
-| The suppressed `U1 → U2` edge | `U1`'s terms handler and term ranking → `U2`'s `TermExtraction` module | **Internal** build/import dependency inside this repository | Bolt 1 (`U1`) | Sequenced so Bolt 2 lands before `U1`'s terms work completes; see `bolt-plan.md` and `risk-and-sequencing-rationale.md`. |
+| The declared `U1 → U2` edge | `U1`'s terms handler and term ranking → `U2`'s `TermExtraction` module | **Internal** build/import dependency inside this repository | Bolt 2 (`U1`) | Now enforced by topology: `U2` is Bolt 1 and resolves first. See `bolt-plan.md` and `risk-and-sequencing-rationale.md`. |
 
 This is **not** an external dependency. `U2` is part of this same intent, is
 owned by the same mob, and is built by this same workflow; it lives in
 `inception/units-generation/unit-of-work-dependency.md` as a real import edge
-that the `skeleton: on` ruling suppresses from the machine-readable DAG block. It
+that the `skeleton: on` ruling previously suppressed from the machine-readable DAG
+block and which is now recorded there. It
 appears here only to state plainly that nothing outside the team gates a Bolt —
 the one gating relationship is between two Bolts in this plan.
