@@ -28575,3 +28575,90 @@
 **Duration ms**: 37
 
 ---
+
+## Error Logged
+**Timestamp**: 2026-10-04T09:52:29Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage code-generation --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 2
+**Error**: Cannot start another review for "code-generation" because iteration 1 is still waiting for a verdict. Record that verdict, or repeat the same iteration with --retry-pending if the reviewer did not run.\n{"kind":"ask","ask_type":"guard-recovery","response_route":"execute-remedy","question":"The next action for \"code-generation\" would be refused. Choose one authority-preserving recovery action.","stage":"code-generation","unit":"u2-term-extraction","reason_codes":["REVIEW_VERDICT_PENDING"],"remedies":[{"op":"request-changes","action":"Ask \"What should change?\" for stage \"code-generation\" for Unit \"u2-term-extraction\" and end the turn. After the human answers, submit Request Changes with their exact text unchanged as the report reason; that unlocks revision and a fresh review.","requiresHuman":true,"executableNow":true,"interaction":"human-input"}]}
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T09:52:33Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage code-generation --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 1 --retry-pending
+**Error**: Refusing review retry for "code-generation": declared artifacts no longer match the bytes from REVIEW_REQUESTED iteration 1. A retry re-dispatches that exact request and cannot rebaseline changed content. Restore the requested artifact bytes before retrying.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T10:34:51Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-10-04T10:35:02Z
+**Event**: DECISION_RECORDED
+**Stage**: code-generation
+**Decision**: Approve the plan, its Testing Contract, and the unit test instructions?
+**Options**: Approve Plan,Request Changes
+**Checkpoint**: Code Generation Plan Approval
+**Plan Target**: unit:u2-term-extraction
+**Intent**: 01a0f89d-b248-754d-8ff4-8caf55e1a686
+**Directive Epoch**: sha256:6bc79d5a0d7e3b7033eb4edafb29a0a9f2f5af1504d9ada65960f9dd3b8e1307
+**Run floor**: STAGE_JUMPED:2026-10-04T09:38:09Z#8
+**Approval Fingerprint**: sha256:v3:a5f5c0f3b8be2c5a25eea7a4d3d8b898e5c24f5fde90534734b330d862cfbac6
+**Questions File**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/code-generation/code-generation-questions.md
+**Questions SHA-256**: f9e3742a0dc1c0ad5ca5eebd563624d015bdadf5642fb3721ef1b502ce170db2
+**Prompt SHA-256**: f9e3742a0dc1c0ad5ca5eebd563624d015bdadf5642fb3721ef1b502ce170db2
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+**Unit**: u2-term-extraction
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T10:37:23Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T10:37:28Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log answer --stage code-generation --unit u2-term-extraction --checkpoint plan-approval --session ses_f075f579cffeY1AuKi93ORtbeq --questions-file aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/code-generation/code-generation-questions.md --details Approve Plan
+**Error**: Refusing to record Plan Approval: Plan Approval requires the actual offered choice from this prompt and session
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T10:40:28Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Plan Approval Recorded
+**Timestamp**: 2026-10-04T10:40:33Z
+**Event**: PLAN_APPROVAL_RECORDED
+**Stage**: code-generation
+**Details**: Approve Plan
+**Unit**: u2-term-extraction
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+**Checkpoint**: Code Generation Plan Approval
+**Plan Target**: unit:u2-term-extraction
+**Intent**: 01a0f89d-b248-754d-8ff4-8caf55e1a686
+**Directive Epoch**: sha256:6bc79d5a0d7e3b7033eb4edafb29a0a9f2f5af1504d9ada65960f9dd3b8e1307
+**Run floor**: STAGE_JUMPED:2026-10-04T09:38:09Z#8
+**Approval Fingerprint**: sha256:v3:a5f5c0f3b8be2c5a25eea7a4d3d8b898e5c24f5fde90534734b330d862cfbac6
+**Questions File**: aidlc/spaces/default/intents/261001-analytics-layer/construction/u2-term-extraction/code-generation/code-generation-questions.md
+**Questions SHA-256**: dfd509a615ba0b54cc66dfbb7ad79d3102ed73f34d7b4355fd9eca7cd59a378d
+**Prompt SHA-256**: f9e3742a0dc1c0ad5ca5eebd563624d015bdadf5642fb3721ef1b502ce170db2
+
+---
