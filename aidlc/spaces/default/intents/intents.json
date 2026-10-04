@@ -26,5 +26,12 @@
     "dirName": "261001-analytics-layer",
     "scope": "feature",
     "status": "complete"
+  },
+  {
+    "uuid": "01a106d4-ab66-7994-8fc4-3f0e3afa6936",
+    "slug": "analytics-view-packaging",
+    "dirName": "261004-analytics-view-packaging",
+    "scope": "express",
+    "status": "complete"
   }
 ]

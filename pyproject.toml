@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,9 @@ name = "very-cool-sentiment-analysis"
 version = "0.1.0"
 description = "A small localhost-only sentiment-analysis web app (FastAPI + sqlite3) with an offline dummy client and an opt-in live Jev/OpenRouter client."
 readme = "README.md"
+# FR2.5: the distribution declares the licence the LICENSE file carries.
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 # Dependency cap (NFR3.1, C1): fastapi + uvicorn at runtime, nothing else.
 dependencies = [
@@ -15,12 +18,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# NFR3.2: the test runner, the coverage plugin and the linter/formatter live
-# here and never in the runtime list, so installing for use stays at two packages.
+# NFR3.2: the test runner, the coverage plugin, the linter/formatter and the
+# verification instruments live here and never in the runtime list, so installing
+# for use stays at two packages. `detect-secrets` (FR2.2), `pip-audit` (FR2.3)
+# and `uv` (FR2.4, the hashed lockfile's generator) are dev-only.
 dev = [
     "pytest>=8",
     "pytest-cov>=5",
     "ruff>=0.6",
+    "detect-secrets>=1.5",
+    "pip-audit>=2.7",
+    "uv>=0.5",
 ]
 
 [tool.setuptools]
@@ -53,8 +61,19 @@ target-version = "py311"
 [tool.ruff.lint]
 # An explicit, reviewed selection rather than a tool default that drifts between
 # releases (NFR-TS2, C4, AC9.1.3). "S" is the security set: secrets in code,
-# unsafe calls, weak hashing.
-select = ["E", "F", "W", "I", "N", "UP", "S", "B", "C4", "SIM"]
+# unsafe calls, weak hashing. "TID" carries `banned-api`, which turns the layer
+# boundaries into a lint failure (FR2.6).
+select = ["E", "F", "W", "I", "N", "UP", "S", "B", "C4", "SIM", "TID"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# The import graph is a flat by-layer package and must stay acyclic and
+# descending: leaves -> repository/db/clients -> service -> routes -> main ->
+# __init__. Each entry below makes a boundary breach a lint failure rather than
+# something only a reviewer notices (FR2.6). The three files that legitimately
+# reach across a layer are exempted by name in `per-file-ignores`.
+"app.routes".msg = "routes is the HTTP edge; only app.main may import it (layer boundary, FR2.6)."
+"app.service".msg = "reads go route -> read module; the service layer is not inserted into the read path (layer boundary, FR2.6)."
+"app.main".msg = "app.main assembles the application; only app/__init__.py re-exports it (layer boundary, FR2.6)."
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI's dependency markers are *meant* to be called in argument defaults;
@@ -62,10 +81,17 @@ select = ["E", "F", "W", "I", "N", "UP", "S", "B", "C4", "SIM"]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
 
 [tool.ruff.lint.per-file-ignores]
-# Tests assert by construction, hold obviously-fake fixture credentials and shell
-# out to `git` to prove the config file is ignored; the security rules still
-# apply in full to `app/`.
-"tests/*" = ["S101", "S105", "S106", "S603", "S607"]
+# Tests assert by construction, hold obviously-fake fixture credentials, shell
+# out to `git` to prove the config file is ignored, and legitimately import every
+# layer; the security and layer-boundary rules still apply in full to `app/`.
+"tests/*" = ["S101", "S105", "S106", "S603", "S607", "TID251"]
+# The three files that legitimately cross a layer boundary: `routes` coordinates
+# the read modules and the service layer, `main` wires the routers and the
+# session store, and `__init__` re-exports the assembled app. Every other module
+# is held to the descending-graph bans above.
+"app/routes.py" = ["TID251"]
+"app/main.py" = ["TID251"]
+"app/__init__.py" = ["TID251"]
 
 [tool.ruff.format]
 quote-style = "double"

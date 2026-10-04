@@ -1,6 +1,6 @@
 # Component Inventory — `very-cool-sentiment-analysis` (repo `sentiment-opencode`)
 
-Twelve components, one per logical building block. Each entry states what the
+Fourteen components, one per logical building block. Each entry states what the
 component owns, the surface it exposes, what it depends on, and a health rating
 against the boundary rules in **architecture.md**.
 
@@ -15,7 +15,7 @@ consequence an extension would inherit.
 
 | | |
 |---|---|
-| **Files** | `app/__init__.py` (10), `app/main.py` (103) |
+| **Files** | `app/__init__.py` (10), `app/main.py` (163) |
 | **Responsibility** | Build the application and own startup. Resolve settings, bring the database schema to its current version, log the active mode exactly once, mount both routers and the static assets, register the five exception handlers, expose `app:app`. |
 | **Exposes** | `create_app(settings=None, session_auth=None) -> FastAPI`; module-level `app`; `_configure_logging()`. |
 | **Depends on** | `app.db`, `app.config`, `app.routes`, `app.sentiment`, `app.service`, `app.session_auth` (6) |
@@ -64,9 +64,9 @@ Notes:
 
 | | |
 |---|---|
-| **Files** | `app/models.py` (144) |
-| **Responsibility** | Define the wire and storage shape of one analysis in one place, so the API contract and the stored-row contract cannot drift apart. |
-| **Exposes** | `AnalyzeRequest` (dataclass); `AnalysisRecord` (frozen dataclass) with `to_dict()` and `from_row()`; `RECORD_FIELDS`; `ANALYZE_FIELDS`; `undeclared_body_fields(body)`; `UNKNOWN_PROVIDER = "unknown"`. |
+| **Files** | `app/models.py` (246) |
+| **Responsibility** | Define the wire and storage shape of one analysis in one place, so the API contract and the stored-row contract cannot drift apart, plus the four computed analytics shapes the `/v2` read layer returns. |
+| **Exposes** | `AnalyzeRequest` (dataclass); `AnalysisRecord` (frozen dataclass) with `to_dict()` and `from_row()`; `AnalyticsSummary`, `AnalyticsSeriesEntry`, `AnalyticsTerms`, `TermFrequencyEntry`; `RECORD_FIELDS`; `ANALYZE_FIELDS`; `undeclared_body_fields(body)`; `UNKNOWN_PROVIDER = "unknown"`. |
 | **Depends on** | nothing inside `app` — a leaf. Stdlib `json`, `dataclasses`, `collections.abc`. |
 | **Health** | **Watch.** A shared contract depended on by four modules, and the contract itself exists in **four** hand-maintained copies (`RECORD_FIELDS`, the field declarations, `to_dict()`'s literal, and `ANALYSES_COLUMNS` + the DDL in `app/db.py`) — plus a fifth positional copy in the export route. They are held in sync by tests, not mechanically. TD-8 in **code-quality-assessment.md**. |
 
@@ -110,11 +110,11 @@ Notes:
 
 | | |
 |---|---|
-| **Files** | `app/dummy_client.py` (101) |
+| **Files** | `app/dummy_client.py` (103) |
 | **Responsibility** | Produce a deterministic sentiment decision with no network, no credentials and no external state, so development and the whole test suite run offline by default. |
 | **Exposes** | `DummySentimentClient` with `analyze(text)`; `POSITIVE_WORDS` (15 terms); `NEGATIVE_WORDS` (14 terms); `LABEL_PROBABILITIES`; `MODEL = "dummy-keyword-v1"`; `PROVIDER = "offline"`. |
-| **Depends on** | `app.sentiment` only. Stdlib `re`. |
-| **Health** | **Watch.** The engine itself is clean and exactly as narrow as it should be — but it is also the accidental home of `_WORD = re.compile(r"[a-z']+")` (`app/dummy_client.py:68`), the **only** tokenizer in the repository, which is underscore-private and lives in an engine rather than a shared place. TD-6 in **code-quality-assessment.md**. |
+| **Depends on** | `app.sentiment` and `app.terms` (`tokenize`). Stdlib `re`. |
+| **Health** | **Healthy.** The engine is clean and exactly as narrow as it should be, and it no longer owns the tokeniser: the promoted `app/terms.tokenize` is consumed here, so the engine's scoring draws on the repository's one tokeniser without owning it. |
 
 Notes:
 - Classification is a keyword count: more positive than negative → `positive`,
@@ -200,24 +200,70 @@ Notes:
 
 ---
 
+## Analytics Read Layer
+
+| | |
+|---|---|
+| **Files** | `app/analytics.py` (374) |
+| **Responsibility** | Answer the two `/v2` questions — "what happened in this range" and "which terms led" — from stored rows, entirely in process: resolve the range, run the grouped summary, grow the zero-filled per-day series, and rank the significant terms. |
+| **Exposes** | `resolve_range(from_bound, to_bound) -> ResolvedRange`; `read_summary(connection, resolved, import_id=None, today=None) -> AnalyticsSummary`; `read_terms(connection, resolved, import_id=None, limit=DEFAULT_TERM_LIMIT) -> AnalyticsTerms`; `RangeError`; `TERM_LABELS`, `DEFAULT_TERM_LIMIT (=10)`, `SCALE`; the private helpers (`_parse_bound`, `_range_parameters`, `_shares`, `_round_half_up`, `_build_series`, `_zero_entry`, `_rank`). |
+| **Depends on** | `app.models` (the analytics shapes), `app.sentiment` (`LABELS`), `app.terms` (`tokenize`, `significant_terms`); stdlib `sqlite3`, `collections.Counter`, `datetime`, `decimal`, `re`. **No** `fastapi`, no socket, no write, no DDL. |
+| **Health** | **Healthy.** A single-purpose read module beside `repository`; it receives the request's connection and owns none. Every value reaches a statement as a bound parameter, and the statement count is a function of the query shape rather than of the range length. |
+
+Notes:
+- `resolve_range` is shared by both endpoints, so their populations match
+  (`BR1.5`); an unreadable or inverted range raises `RangeError`.
+- `read_summary` runs **one** grouped SELECT; totals, label mix, shares, mean and
+  the per-day series are computed in process. `mean_confidence` is `None` when
+  `total == 0` (precedent A3) and `counts` is pre-seeded from `LABELS`.
+- `read_terms` reads rows once, filters through `significant_terms` and ranks
+  through `_rank`, trimming to `limit` (honoured, never clamped). Only
+  `positive`/`negative` rows contribute; a neutral row reaches neither list.
+- The module docstring states the whole boundary: no sentiment logic, no engine
+  call, no HTTP client, no socket, no credential, no write, no DDL.
+
+---
+
+## Term Extraction
+
+| | |
+|---|---|
+| **Files** | `app/terms.py` (201) |
+| **Responsibility** | Turn text into word tokens and say which carry meaning: the repository's one tokeniser (`tokenize`) plus the significance filter (`significant_terms`). Counting, ranking and scoring live elsewhere. |
+| **Exposes** | `tokenize(text) -> list[str]`; `significant_terms(tokens) -> list[str]`; `TOKEN_PATTERN` / `_TOKEN`; `STOPWORDS` (a `frozenset`); `MIN_TERM_LENGTH = 3`. |
+| **Depends on** | nothing inside `app` — a leaf. Stdlib `re`, `collections.abc`. |
+| **Health** | **Healthy.** The promoted tokeniser now has a named home. `tokenize` applies no filter (so the offline engine's scoring is byte-for-byte unchanged) and `significant_terms` filters an already-tokenised sequence. |
+
+Notes:
+- Promoted out of `app/dummy_client`'s private `_WORD` (A4); both
+  `app.dummy_client` and `app.analytics` consume `tokenize`. This closes TD-6.
+- The `# noqa: S105` on `TOKEN_PATTERN` is a word-pattern constant, not a
+  credential.
+- `[a-z']` token boundaries mean a term written entirely in a non-Latin script
+  contributes nothing — a recorded, accepted limitation.
+
+---
+
 ## Persistence and Schema
 
 | | |
 |---|---|
-| **Files** | `app/repository.py` (102), `app/db.py` (243) |
-| **Responsibility** | Own the local database file's shape and lifecycle. `db.py` owns the connection, all DDL and the in-place migration; `repository.py` owns all DML and the row↔record mapping. |
+| **Files** | `app/repository.py` (102), `app/db.py` (339) |
+| **Responsibility** | Own the local database file's shape and lifecycle. `db.py` owns the connection, all DDL, the in-place migration and the indexes; `repository.py` owns all row DML and the row↔record mapping. |
 | **Exposes (repository)** | `insert_analysis(connection, text, result, now=None, import_id=None)`, `list_analyses(connection, limit)`, `list_analyses_by_import_id(connection, import_id)`, `format_timestamp(moment)`, `DEFAULT_LIST_LIMIT = 50`. |
-| **Exposes (db)** | `connect(db_path)`, `init_db(db_path)`, `SCHEMA_VERSION = 3`, `CREATE_ANALYSES_TABLE`, `CREATE_SCHEMA_META_TABLE`, `ANALYSES_COLUMNS`, plus the private migration helpers. |
-| **Depends on** | `app.models` (both). `repository` reaches `SentimentResult` only under `TYPE_CHECKING` (`app/repository.py:22-23`), so it has **no runtime engine dependency**. |
-| **Health** | **At-risk.** `repository.py` is the natural and uncontested home for aggregate SQL and is currently clean. `db.py` carries two verified migration defects: the rebuild **silently drops every index on `analyses`** (TD-1) and a new column on `analyses` is a five-place edit (TD-2). Both are load-bearing for the active intent's additive-schema constraint. |
+| **Exposes (db)** | `connect(db_path)`, `init_db(db_path)`, `SCHEMA_VERSION = 4`, `CREATE_ANALYSES_TABLE`, `CREATE_SCHEMA_META_TABLE`, `ANALYSES_COLUMNS`, the index DDL, plus the private migration helpers. |
+| **Depends on** | `app.models` (both). `repository` reaches `SentimentResult` only under `TYPE_CHECKING` (`app/repository.py`), so it has **no runtime engine dependency**. |
+| **Health** | **Watch.** `repository.py` stays clean and now shares the read side with `app.analytics` rather than absorbing aggregates. `db.py`'s index-drop defect (TD-1) is **closed**: the three analytics indexes are created idempotently in `init_db` after the rebuild branch, and `tests/test_migration_indexes.py` asserts their survival. A new column on `analyses` is still a five-place edit (TD-2). |
 
 Notes:
-- **DDL shape (version 3):** `analyses(id INTEGER PK AUTOINCREMENT, text TEXT
+- **DDL shape (version 4):** `analyses(id INTEGER PK AUTOINCREMENT, text TEXT
   NOT NULL, label TEXT NOT NULL CHECK(label IN ('positive','negative','neutral')),
   probabilities TEXT NOT NULL, confidence REAL NOT NULL, intensity REAL,
   model TEXT NOT NULL, provider TEXT NOT NULL, created_at TEXT NOT NULL,
-  import_id TEXT)` plus `schema_meta(key TEXT PK, value TEXT NOT NULL)`.
-  `intensity` and `import_id` are the only nullable columns besides the key.
+  import_id TEXT)` plus `schema_meta(key TEXT PK, value TEXT NOT NULL)` and the
+  three analytics indexes on `analyses` (`created_at`, and the two the `/v2`
+  range/label reads use). `intensity` and `import_id` are the only nullable
+  columns besides the key.
 - **Migration strategy** (`_migrate_analyses`): add any missing column nullable in
   place, then — unless the table is *already exactly* the current shape — rebuild
   it from the current DDL and copy every row across, backfilling a missing
@@ -233,23 +279,25 @@ Notes:
   rather than discarding data.
 - `init_db` runs on **every** startup and is idempotent — verified by running it
   twice against a migrated store.
-- **Verified empirically:** a migrating store carrying
-  `CREATE INDEX idx_analyses_created ON analyses(created_at)` came out of
-  `init_db` with the columns correct, the row preserved (including its
-  `intensity` value), the side table untouched and the version bumped to 3 — and
-  `sqlite_master` reporting **zero** indexes on `analyses`. A *separate* table is
-  unaffected by the rebuild.
+- **Verified empirically (this run's predecessor scan) and now covered by a
+  test:** a migrating store that carries an index on `analyses` previously came
+  out of `init_db` with the index gone, because `CREATE_ANALYSES_TABLE` declared
+  none. The current `init_db` creates the analytics indexes idempotently
+  **after** the rebuild branch, and `tests/test_migration_indexes.py` asserts
+  they survive a migration — see TD-1 (closed). A *separate* table is unaffected
+  by the rebuild.
 - **Observed scope boundary:** `_COPY_ROWS_INTO_V1_TABLE` backfills only
   `provider`. A store missing a value in any *other* added column aborts the copy
   with an `IntegrityError` — which, inside the transaction, becomes a loud
   startup failure. That is the safe outcome, but it is not the same as a
   successful migration.
-- The committed `data/sentiment.db` reports `schema_meta.version = 2` with no
-  `import_id` column and 0 rows, so the v2 → v3 path has never run against that
-  file. `/data/` is gitignored, so it is local state only.
-- **No index exists on `analyses` today**, and `created_at` — the column any
-  date-range aggregate would filter on — is unindexed. Its ISO-8601-Z encoding
-  makes it lexicographically sortable and directly range-comparable as a string.
+- The local `data/sentiment.db` now reports `schema_meta.version = 4` with the
+  three named indexes present and 7 rows; `/data/` is gitignored, so it is local
+  state only. It has migrated forward twice in place.
+- **The three analytics indexes exist on `analyses`**, so the `created_at`
+  range filter the `/v2` reads use is indexed. `created_at`'s ISO-8601-Z
+  encoding still makes it lexicographically sortable and directly
+  range-comparable as a string.
 
 ---
 
@@ -257,19 +305,21 @@ Notes:
 
 | | |
 |---|---|
-| **Files** | `app/routes.py` (387) |
-| **Responsibility** | Translate HTTP requests into service calls and service failures into one consistent error envelope. Nothing else — no sentiment logic, no SQL. |
-| **Exposes** | `router`, `v1_router`, `V1_PREFIX`; 11 route handlers; `error_response`; `require_declared_fields`; the four dependency providers; the five handler functions; the six machine-code constants. |
-| **Depends on** | `app.db` (for `connect` only), `app.config`, `app.models`, `app.repository`, `app.sentiment`, `app.service`, `app.session_auth` (7). |
-| **Health** | **Healthy, with a size caveat.** The layering holds exactly: no SQL, no engine construction, no sentiment logic. It is the largest file and the highest fan-out in the system, and it is where every new endpoint lands by default — so it is the file whose growth an extension should watch. |
+| **Files** | `app/routes.py` (502) |
+| **Responsibility** | Translate HTTP requests into service calls or read-module calls, and failures into one consistent error envelope. Nothing else — no sentiment logic, no SQL. |
+| **Exposes** | `router`, `v1_router`, `v2_router`, `V1_PREFIX`, `V2_PREFIX`; 13 route handlers; `error_response`; `require_declared_fields`; the four dependency providers; the five handler functions; the seven machine-code constants (including `STORAGE_FAILURE`). |
+| **Depends on** | `app.db` (for `connect` only), `app.config`, `app.models`, `app.repository`, `app.analytics`, `app.sentiment`, `app.service`, `app.session_auth` (8). |
+| **Health** | **Healthy, with a size caveat.** The layering holds exactly: no SQL, no engine construction, no sentiment logic. It is the largest file (502 lines) and the highest fan-out (8) in the system, and it is where every new endpoint lands by default — so it is the file whose growth an extension should watch. |
 
 Notes:
-- Two routers, deliberately split: `v1_router` carries the data contract,
-  `router` carries the page and `/auth/*` which carry none.
+- Three routers, deliberately split: `v1_router` carries the frozen classification
+  contract, `v2_router` the additive analytics read contract, and `router` the
+  page and `/auth/*`, which carry no data contract.
 - `get_connection` is the **only** place the `sqlite3` driver and the connection
   lifecycle are touched anywhere in the codebase — and therefore also the only
-  place the accepted cross-thread defect lives (TD-5). A polling page is the
-  access pattern most likely to expose it.
+  place the accepted cross-thread defect lived (TD-5). The `/v2` reads receive
+  that same connection; the harness now carries a concurrency instrument, so the
+  overlap defect has a reproducing test.
 - `get_analyses_export` writes the seven export columns by unpacking each
   `AnalysisRecord` field **by hand** rather than from `to_dict()` or
   `dataclasses.fields`, so the record shape and the export shape can silently
@@ -285,11 +335,11 @@ Notes:
 
 | | |
 |---|---|
-| **Files** | `app/static/index.html` (193), `app/static/app.js` (201) |
-| **Responsibility** | Present the submit form, the result panel, the error panel, the history list and the connection indicator, and translate user actions into the four `fetch` calls that drive them. |
+| **Files** | `app/static/index.html` (351), `app/static/app.js` (322) |
+| **Responsibility** | Present the submit form, the result panel, the error panel, the history list, the connection indicator, a three-link nav and the analytics summary region; translate user actions into the five `fetch` calls that drive them. |
 | **Exposes** | Served markup and one script. Nothing else — there is no build, no bundler, no `package.json`, and no framework. |
 | **Depends on** | the HTTP surface over HTTP only. No build-time or import-time dependency on anything. |
-| **Health** | **At-risk, and honestly so.** The markup and the served asset are pinned by `tests/test_page.py`, but **browser-side execution of `app.js` is not driven by the suite at all**, because the two-package runtime cap forbids any browser-automation dependency. The page's own docstring says so. Any new view inherits this gap. |
+| **Health** | **At-risk, and honestly so.** The markup and the served asset are pinned by `tests/test_page.py`, but **browser-side execution of `app.js` is not driven by the suite at all**, because the two-package runtime cap forbids any browser-automation dependency. The terms section is a static placeholder and there is no date-range control, so NFR4.6 (partial-failure marker) and NFR4.7 (superseded-response guard) have no instrument today. The active intent fills exactly this gap. |
 
 Notes:
 - One HTML file with inline `<style>`, one vanilla script. `const API = "/v1";`
@@ -317,11 +367,11 @@ Notes:
 
 | | |
 |---|---|
-| **Files** | `tests/conftest.py` (176), `tests/test_db.py` (436), `tests/test_routes.py` (363), `tests/test_bulk_import.py` (315), `tests/test_service.py` (304), `tests/test_auth_routes.py` (259), `tests/test_repository.py` (237), `tests/test_live_client.py` (220), `tests/test_session_auth.py` (196), `tests/test_config.py` (180), `tests/test_dummy_client.py` (84), `tests/test_page.py` (77) |
+| **Files** | `tests/conftest.py` (315), `tests/test_analytics_routes.py` (804), `tests/test_analytics_read.py` (561), `tests/test_migration_indexes.py` (542), `tests/test_db.py` (443), `tests/test_routes.py` (416), `tests/test_bulk_import.py` (315), `tests/test_service.py` (304), `tests/test_auth_routes.py` (259), `tests/test_repository.py` (237), `tests/test_live_client.py` (220), `tests/test_terms.py` (212), `tests/test_session_auth.py` (196), `tests/test_config.py` (180), `tests/test_page.py` (171), `tests/test_dummy_client.py` (84) |
 | **Responsibility** | Pin the observable contract of every component above, offline, with no mock objects. |
-| **Exposes** | `asgi_request`, `offline_guard`, `tmp_settings`, `tmp_db_path`; 118 test functions. |
+| **Exposes** | `asgi_request`, `offline_guard`, `tmp_settings`, `tmp_db_path`, `concurrent_requests`, `application_started`; **192 collected tests from 175 test functions**. |
 | **Depends on** | `app.*` (as the subject under test) and `tests.conftest`. `pytest` only. |
-| **Health** | **Healthy.** 118 passing, 96.02% line coverage against an 80% floor, `ruff check` and `ruff format --check` both clean, and a session-wide socket blocker that makes an accidental network call fail the run. Measured detail is in **code-quality-assessment.md**. |
+| **Health** | **Healthy.** 192 passing, **97.06%** line coverage (884 statements, 26 missed) against an 80% floor, `ruff check` and `ruff format --check` both clean, and a session-wide socket blocker that makes an accidental network call fail the run. Measured detail is in **code-quality-assessment.md**. |
 
 Notes:
 - `asgi_request` builds a raw ASGI scope, enters the lifespan and collects the
@@ -334,7 +384,9 @@ Notes:
   `RejectingClient`, `FailingClient`) or a `monkeypatch.setattr` on
   `app.routes.get_client`.
 - No `unittest`, no `hypothesis`, no `asyncio` marker — `asgi_request` calls
-  `asyncio.run` per request.
+  `asyncio.run` per request. `concurrent_requests` + `application_started` add
+  genuine multi-thread overlap, which is how the R-01 concurrency defect now has
+  a reproducing test (`tests/test_analytics_routes.py`).
 - Assertions read values back out of **real SQLite and real served markup**,
   never out of doubles.
 - `tmp_path`-scoped settings and DB paths mean no test reads `config.local.toml`
@@ -352,7 +404,8 @@ keeps it true.
 | Rule | Owner | Enforcement |
 |---|---|---|
 | Only the HTTP layer touches `sqlite3` and the connection lifecycle | HTTP API Surface | `get_connection` is the sole call site of `db.connect` outside `db.py` |
-| Only `db.py` issues DDL; only `repository.py` issues DML | Persistence and Schema | No SQL token appears in `routes.py`, `service.py`, `models.py` or `sentiment.py` |
+| Only `db.py` issues DDL; only `repository.py` issues row DML; `analytics.py` issues only parameter-bound SELECTs | Persistence and Schema, Analytics Read Layer | No SQL token appears in `routes.py`, `service.py`, `models.py` or `sentiment.py` |
+| Aggregate reads receive the request's connection | Analytics Read Layer | `resolve_range`/`read_summary`/`read_terms` all take a connection; `analytics.py` never calls `db.connect` |
 | The engine is reached only through `SentimentClient` | Analysis Orchestration | `get_client` is the sole `SentimentClient(...)` construction site |
 | Nothing below `routes.py` imports `fastapi` | every component below the edge | No `fastapi` import outside `routes.py` and `main.py` |
 | One envelope construction site | HTTP API Surface | `error_response` is called by all five handlers and by the two inline `4xx` returns |
@@ -371,17 +424,20 @@ contracts are small, immutable value objects rather than shared mutable state.
 **The four boundaries an extension should look at first**, in the order they are
 likely to be touched:
 
-1. **`app/routes.py` size** — 387 lines and growing by endpoint. The natural
-   pressure point for a future split (page routes vs. data routes vs. support
-   routes) is visible but not yet urgent.
-2. **`app/db.py` migration correctness** — the index drop (TD-1) and the
-   five-place column edit (TD-2) are the only places where an extension can
+1. **`app/routes.py` size** — 502 lines and growing by endpoint. The natural
+   pressure point for a future split (page routes vs. `/v1` routes vs. `/v2`
+   routes vs. support routes) is visible but not yet urgent.
+2. **`app/db.py` migration correctness** — the index-drop defect (TD-1) is now
+   closed by creating the indexes idempotently after the rebuild, but the
+   five-place column edit (TD-2) remains the other place an extension can
    corrupt a user's local store rather than merely fail to compile.
-3. **`app.js` execution coverage** — zero. Any new page's behaviour is
-   unverifiable by the suite as it stands.
-4. **The contract's five copies** — TD-8. Adding a field means editing five
-   places, and the export route's positional copy can drift without any test
-   noticing.
+3. **`app.js` execution coverage** — zero. The analytics view's behaviour (a
+   terms fetch, a range control, a partial-failure marker, a superseded-response
+   guard) is unverifiable by the suite as it stands; only static served-asset
+   assertions and the manual end-to-end line can decide NFR4.6/NFR4.7.
+4. **The contract's multiple copies** — TD-8. Adding a field means editing
+   several places, and the export route's positional copy can drift without any
+   test noticing.
 
 Measured coverage, lint status, CI status and the full debt register are in
 **code-quality-assessment.md**. Endpoint and payload reference is in

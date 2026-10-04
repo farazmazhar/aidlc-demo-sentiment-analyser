@@ -2,9 +2,10 @@
 
 ## System Overview
 
-One process. One ASGI application. One local SQLite file. A page and a versioned
-JSON API over the same store, with a sentiment engine behind a single typed
-interface that has two adapters — an offline keyword engine (default) and a live
+One process. One ASGI application. One local SQLite file. A page, a frozen
+classification JSON API (`/v1`) and an additive read-only analytics API (`/v2`)
+over the same store, with a sentiment engine behind a single typed interface
+that has two adapters — an offline keyword engine (default) and a live
 OpenRouter/Jev client (opt-in). Nothing in the system talks to anything except
 SQLite on the local filesystem, the browser, and — only in live mode — OpenRouter
 over HTTPS.
@@ -12,7 +13,8 @@ over HTTPS.
 ```
 uvicorn → app:app → FastAPI
                      ├── lifespan: load_settings() → db.init_db() → log mode once
-                     ├── /v1 router      (data contract)
+                     ├── /v1 router      (frozen classification contract)
+                     ├── /v2 router      (additive analytics read contract)
                      ├── /  router       (page + /auth/*)
                      ├── /static mount   (StaticFiles)
                      └── 5 exception handlers → one error envelope
@@ -29,7 +31,8 @@ Evidence for the style call:
 |---|---|
 | Single deployable, single process, single store | `app/main.py` builds one `FastAPI`; `README.md` documents one local run command; no Dockerfile, no compose file, no service manifests |
 | No network boundary at all | The only outbound calls are the two OpenRouter calls (`app/openrouter_client.py:34`, `app/session_auth.py:40-41`), both optional and both behind `urllib` in production |
-| Layering is by technical role, not by feature | `app/` is a flat by-layer package: `config`/`models`/`sentiment` → `repository`/`db`/`dummy_client`/`openrouter_client`/`session_auth` → `service` → `routes` → `main` |
+| Layering is by technical role, not by feature | `app/` is a flat by-layer package: `config`/`models`/`sentiment`/`terms` → `repository`/`analytics`/`db`/`dummy_client`/`openrouter_client`/`session_auth` → `service` → `routes` → `main` |
+| The read path reaches persistence without `service` | `app/analytics.py` sits beside `repository` as a second read module and is imported by `routes`; `service` holds no read function, and both endpoints take the request's connection |
 | The seams are explicit Ports-and-Adapters | `SentimentClient` (`app/sentiment.py:78`) is a `runtime_checkable` `Protocol`; `HttpTransport` (`app/openrouter_client.py:69`) is a second one; the concrete client is chosen in exactly one function, `get_client` (`app/service.py:76`) |
 | Connections are owned at the edge | Only `app/routes.py:92-98` touches the `sqlite3` driver and the connection lifecycle; `service` and `repository` receive a connection as an argument |
 
@@ -54,6 +57,8 @@ graph TD
         SVC["Analysis Orchestration<br/>app.service"]
         SENT["Sentiment Engine Interface<br/>app.sentiment"]
         MOD["Record and Request Contracts<br/>app.models"]
+        ANL["Analytics Read Layer<br/>app.analytics"]
+        TRM["Term Extraction<br/>app.terms"]
     end
 
     subgraph adapters["Outbound adapters"]
@@ -71,7 +76,7 @@ graph TD
     CFG["Configuration and Settings<br/>app.config"]
 
     UI -->|"GET / , GET /static/*"| ASGI
-    UI -->|"/v1/* , /auth/*"| RT
+    UI -->|"/v1/* , /v2/* , /auth/*"| RT
     ASGI --> RT
     ASGI --> CFG
     ASGI --> DB
@@ -79,6 +84,7 @@ graph TD
 
     RT --> SVC
     RT --> REPO
+    RT --> ANL
     RT --> MOD
     RT --> AUTH
     RT --> SENT
@@ -93,7 +99,12 @@ graph TD
 
     LIVE --> SENT
     DUMMY --> SENT
+    DUMMY --> TRM
     AUTH --> CFG
+
+    ANL --> MOD
+    ANL --> SENT
+    ANL --> TRM
 
     REPO --> MOD
     REPO --> DB
@@ -107,8 +118,8 @@ graph TD
     classDef core fill:#eef2fb,stroke:#57a
     classDef adapt fill:#fdf0e6,stroke:#c85
     classDef persist fill:#f4eef8,stroke:#75a
-    class CFG,MOD,SENT,UI leaf
-    class SVC core
+    class CFG,MOD,SENT,TRM,UI leaf
+    class SVC,ANL core
     class DUMMY,LIVE,AUTH adapt
     class REPO,DB,SQLITE persist
 ```
@@ -119,7 +130,8 @@ Each rule below is enforced by the code's structure, not by a comment.
 
 | Rule | Enforced by | What it buys |
 |---|---|---|
-| No SQL in the HTTP layer | `app/routes.py` imports `app.db` only for `connect`; every statement lives in `app/repository.py` or `app/db.py` | The route layer can be rewritten without touching persistence. |
+| No SQL in the HTTP layer | `app/routes.py` imports `app.db` only for `connect`; every statement lives in `app/repository.py`, `app/analytics.py` or `app/db.py` | The route layer can be rewritten without touching persistence. |
+| Aggregate reads go route → read module, never through `service` | `app/analytics.py` is imported by `routes`; `service` holds no read function at all (`Q9`) | The read path is one hop, and the service layer stays an orchestration layer rather than a pass-through. |
 | No HTTP in the core | `app/service.py` imports nothing from `fastapi` | The orchestration is callable from a test, a script or a future CLI without a request object. |
 | The engine is reached only through the protocol | `app/service.py` holds a `SentimentClient`; `get_client` is the sole construction site | A third engine is one new adapter. Routes, repository and page are untouched. |
 | Connections are created and closed at one place | `get_connection` (`app/routes.py:92`) | Connection lifetime, and its known thread-affinity defect, are confined to one function. |
@@ -151,6 +163,21 @@ Each rule below is enforced by the code's structure, not by a comment.
 runs a single parameter-bound `SELECT`, `AnalysisRecord.from_row` decodes the
 encodings, and the handler calls `to_dict()`.
 
+### Analytics read path (`/v2`)
+
+1. `GET /v2/analytics/summary` (or `/terms`) resolves the range bounds through
+   the shared `resolve_range` (`app/analytics.py:125`); an unparseable or
+   inverted range is refused `422 VALIDATION_FAILED`.
+2. The same `get_connection` dependency supplies the request's connection; the
+   read functions receive it and never open, close or own one.
+3. `read_summary` runs **one** grouped, parameter-bound `SELECT` over the
+   resolved range and then grows a zero-filled per-day series in memory;
+   `read_terms` runs one bounded `SELECT` and ranks through `app.terms`.
+   Neither calls the engine, and neither writes.
+4. A `sqlite3.Error` on the read is logged through the module logger and
+   answered `500 STORAGE_FAILURE` — the one addition to the envelope, and one
+   that leaves every `/v1` response untouched.
+
 ### Startup
 
 `create_app`'s `lifespan` resolves settings (or takes the injected ones), builds
@@ -164,21 +191,27 @@ Each entry is the observed decision, its alternatives, and its consequence for
 anyone extending this system. Identifiers `D1`–`D4` and `W1` are the ones the
 code itself cites.
 
-### D3 — Data routes are versioned under `/v1`; page and auth routes are not
+### D3 — Data routes are versioned (frozen `/v1`; additive `/v2`); page and auth routes are not
 
-**Decision.** `V1_PREFIX = "/v1"` (`app/routes.py:49`) on `v1_router`
-(`app/routes.py:134`), included at `app/main.py:90` alongside an unprefixed
-`router` carrying `/`, `/auth/*` and the asset mount.
+**Decision.** `V1_PREFIX = "/v1"` (`app/routes.py:59`) on `v1_router`
+(`app/routes.py:171`) and `V2_PREFIX = "/v2"` (`app/routes.py:65`) on `v2_router`
+(`app/routes.py:174`), both included at `app/main.py:90-91` alongside an
+unprefixed `router` carrying `/`, `/auth/*` and the asset mount. `/v1` is
+**frozen**; the analytics read contract was added as a **second** versioned
+router rather than extending `/v1` (`BR4.7`).
 
 **Alternatives.** One unprefixed router (rejected — the README's own rule is
 that data routes carry a contract and must be versionable); version *everything*
 including `/` and `/auth/*` (rejected — those carry no data contract, so a
-version prefix on them would promise a stability that does not exist).
+version prefix on them would promise a stability that does not exist); host
+`/v2/analytics/*` under the existing `/v1` prefix (rejected — it would change
+the frozen contract's surface).
 
-**Consequence.** The two-router split is the established insertion point for a
-new data router. A new data surface gets its own `APIRouter(prefix=…)` and one
+**Consequence.** The two-router split became a **three**-router one without
+breaking it: a new data surface gets its own `APIRouter(prefix=…)` and one
 `include_router` line; a new page goes on the **unprefixed** router beside
-`index()` and is served the same way.
+`index()` and is served the same way. `/v1`'s shape and status codes remain
+asserted unchanged (`tests/test_analytics_routes.py:563-568`).
 
 ### D1 — A live request with no usable key is refused, never silently answered offline
 
@@ -214,6 +247,25 @@ browser round-trip it sits inside.
 
 **Consequence.** No outbound call can hang a worker thread indefinitely, and the
 two timeouts are separately tunable because they cover different journeys.
+
+### D5 — Aggregate reads live in their own module beside `repository`, called from the route
+
+**Decision.** `app/analytics.py` (`resolve_range`, `read_summary`, `read_terms`
+and their helpers) is imported by `routes` and sits **beside** `repository` — not
+inside it, and not behind `service`. `service` still holds no read or query
+function.
+
+**Alternatives.** Put the aggregates in `repository.py` (rejected — `repository`
+owns DML and the row↔record mapping; an aggregate surface there would blur the
+one-row/one-record read shape); route the reads through `service` (rejected —
+`service` carries no connection-bearing read function, so inserting it would add
+a pass-through hop for no behaviour); keep the SQL inline in `routes` (rejected —
+the "no SQL in the HTTP layer" rule).
+
+**Consequence.** There are now two read modules (`repository` for row reads,
+`analytics` for aggregates) and one write/orchestration module (`service`).
+Both read modules take the request's `sqlite3.Connection` and neither opens one.
+The arrangement is intended to be enforced by `ruff` `TID251` `banned-api`.
 
 ### W1 — The fixed order: validate → resolve engine → answer → validate answer → store
 
@@ -266,18 +318,39 @@ precedent — report `null` for a mean that has no inputs, and include zero-valu
 buckets for a closed label set. This is the in-repo precedent an analytics
 contract should match.
 
+### A4 — The tokeniser is promoted to a leaf (`app/terms.py`) and the engine consumes it
+
+**Decision.** The regex that was `_WORD` inside `app/dummy_client.py` is promoted
+to `app/terms.py` as `TOKEN_PATTERN`/`_TOKEN`, exposed through `tokenize()`.
+`tokenize()` applies **no** length or stopword filter, so the offline engine's
+scoring is byte-for-byte unchanged; `significant_terms()` applies the length +
+stopword filters to an already-tokenised sequence and never tokenises again.
+
+**Alternatives.** Leave `_WORD` private in the engine and duplicate the regex in
+the read layer (rejected — two tokenisers that can drift); add a shared
+`utils.py` (rejected — the no-junk-drawer convention); apply the filters inside
+`tokenize()` (rejected — it would change the engine's scoring, which the engine
+contract forbids).
+
+**Consequence.** `app/terms.py` is a leaf importing nothing from `app`;
+`app/dummy_client` and `app.analytics` both consume it. Tokeniser parity and
+engine-scoring parity are pinned by `tests/test_terms.py` (10 functions). The
+old `_WORD`-in-the-engine debt (TD-6) is closed.
+
 ## Coupling Analysis
 
 | Module | Fan-in (imported by) | Fan-out (imports) | Risk |
 |---|---|---|---|
-| `app/routes.py` | 1 (`main`) | 7 | **Highest fan-out and the largest module.** It is the assembly surface for HTTP. Any new endpoint lands here by default, so the file's growth is the metric to watch. |
+| `app/routes.py` | 1 (`main`) | 8 | **Highest fan-out and the largest module** (502 lines). It is the assembly surface for HTTP. Any new endpoint lands here by default, so the file's growth is the metric to watch. |
 | `app/service.py` | 2 (`main`, `routes`) | 6 | The orchestration hub. Holds the only concrete-client construction site, which is deliberate. |
 | `app/config.py` | 3 (`main`, `routes`, `service`) | 0 | A leaf with high fan-in. Correct shape: a leaf depends on nothing. |
 | `app/sentiment.py` | 4 (`main`, `routes`, `service`, `repository` via `TYPE_CHECKING`) | 0 | A leaf with the highest fan-in. Correct shape. |
 | `app/session_auth.py` | 3 (`main`, `routes`, `service`) | 0 | A leaf. Holds its own outbound call rather than reusing the live client's transport — a deliberate duplication with a shared-shape cost. |
-| `app/dummy_client.py` | 1 (`service`) | 1 | Smallest adapter. Also the accidental home of the only tokenizer in the repo. |
+| `app/dummy_client.py` | 1 (`service`) | 2 | Smallest adapter. No longer the home of the tokeniser — it consumes `app.terms.tokenize`. |
 | `app/openrouter_client.py` | 0 statically (function-local import from `service`) | 1 | Effectively a leaf, loaded on demand. |
-| `app/repository.py` | 2 (`routes`, `service`) | 1 | Owns all DML. |
+| `app/repository.py` | 2 (`routes`, `service`) | 1 | Owns all row DML. |
+| `app/analytics.py` | 1 (`routes`) | 3 | The aggregate read module. Owns `resolve_range`/`read_summary`/`read_terms`; takes a connection, opens none. |
+| `app/terms.py` | 2 (`dummy_client`, `analytics`) | 0 | A leaf: the single promoted tokeniser plus the stopword filter. |
 | `app/db.py` | 2 (`main`, `routes`) | 1 | Owns all DDL and the migration. |
 | `app/main.py` | 1 (`__init__`) | 6 | The composition root. |
 | `app/models.py` | 4 (`routes`, `service`, `repository`, `db`) | 0 | A leaf. Shared contract type — deliberately depended upon by four modules. |
@@ -303,10 +376,12 @@ section the active intent's design should be read against.
 
 | Seam | What it is | Cost to use it | State |
 |---|---|---|---|
-| **Router seam** | `router` / `v1_router` in `app/routes.py:131-134`, included at `app/main.py:90-91` | Add a handler, plus an exception-handler entry only if a new exception type is introduced | The established two-router convention. A third prefix means a third `APIRouter` plus one `include_router` line — **it does not exist yet** |
-| **Persistence seam** | `app/repository.py` is the only module that issues DML, and all three of its functions take a `sqlite3.Connection` as their first argument | Add a function; no other layer changes | **No aggregate query exists anywhere in the codebase.** Aggregates have a natural, uncontested home here |
-| **Engine seam** | `SentimentClient` (`app/sentiment.py:78`) + `get_client` (`app/service.py:76`) | Implement one method | Already correct for the intent, which does not need a new engine |
-| **Schema seam** | `app/db.py` — `SCHEMA_VERSION`, `CREATE_ANALYSES_TABLE`, `_ADD_COLUMN_SQL`, `_rebuild_analyses`, all run from `init_db` on every startup | Adding a **column** is a five-place edit; adding a **separate table** is one DDL statement | See TD-1 and TD-2 in **code-quality-assessment.md** — in particular, an index added to `CREATE_ANALYSES_TABLE` **does not survive the rebuild** |
+| **Router seam** | `router` / `v1_router` / `v2_router` in `app/routes.py:168-174`, included at `app/main.py:90-91` | Add a handler, plus an exception-handler entry only if a new exception type is introduced | The convention now has **three** routers (`v2` was added without touching `v1`). A fourth prefix means a fourth `APIRouter` plus one `include_router` line |
+| **Row-DML seam** | `app/repository.py` owns all row DML and its three functions take a `sqlite3.Connection` as their first argument | Add a function; no other layer changes | `insert_analysis`, `list_analyses`, `list_analyses_by_import_id` |
+| **Aggregate-read seam** | `app/analytics.py` is the aggregate read module; `resolve_range`, `read_summary`, `read_terms` also take the connection first and are called from the route | Add a function beside `read_summary`/`read_terms` | **Aggregate queries live here**, not in `repository` and not behind `service` (D5) |
+| **Engine seam** | `SentimentClient` (`app/sentiment.py:78`) + `get_client` (`app/service.py:76`) | Implement one method | Already correct; the analytics intent does not need a new engine |
+| **Tokeniser seam** | `app/terms.py` — `tokenize()` + `significant_terms()` + `STOPWORDS` | Import the leaf; never duplicate the regex | Promoted out of `app/dummy_client` (A4); `tests/test_terms.py` pins parity |
+| **Schema seam** | `app/db.py` — `SCHEMA_VERSION` (now 4), the DDL, `_ADD_COLUMN_SQL`, `_rebuild_analyses` and the idempotent index creation, all run from `init_db` on every startup | Adding a **column** is a five-place edit; adding a **separate table** or an index created in `init_db` is one DDL statement | The three analytics indexes are created **after** the rebuild branch, so they survive a migration (TD-1 closed); a column edit is still five places (TD-2) |
 
 **Aggregate-query surface, verified on the bundled SQLite.** `label` is TEXT
 under a `CHECK` domain, `confidence` is REAL, and `created_at` is ISO-8601 UTC
@@ -443,6 +518,41 @@ sequenceDiagram
     R-->>B: 200 JSON summary
 ```
 
+### Sequence 5 — Analytics read: summary and terms over one resolved range
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser (app.js)
+    participant R as HTTP API Surface<br/>routes.py
+    participant AN as Analytics Read Layer<br/>analytics.py
+    participant T as Term Extraction<br/>terms.py
+    participant D as SQLite (data/sentiment.db)
+
+    B->>R: GET /v2/analytics/summary?from=&to=&import_id=
+    R->>R: get_connection — the request supplies the connection
+    R->>AN: resolve_range(from, to)
+    alt unparseable or inverted bounds
+        AN-->>R: RangeError
+        R-->>B: 422 VALIDATION_FAILED — nothing read, nothing written
+    else valid
+        AN->>D: one grouped, parameter-bound SELECT over the range
+        AN->>AN: build the zero-filled per-day series in memory
+        AN-->>R: AnalyticsSummary
+        R-->>B: 200 JSON (the six-field summary payload)
+    end
+    Note over R,AN: The terms endpoint runs the same resolve_range, so both<br/>describe one population. A sqlite3.Error becomes 500 STORAGE_FAILURE.
+
+    B->>R: GET /v2/analytics/terms?from=&to=&import_id=&limit=
+    R->>AN: resolve_range(from, to) — identical bounds
+    AN->>D: one bounded SELECT over the range
+    AN->>T: significant_terms(tokenize(text))
+    T-->>AN: filtered tokens
+    AN->>AN: count + rank, trim to limit
+    AN-->>R: AnalyticsTerms
+    R-->>B: 200 JSON {positive, negative}
+```
+
 ### Flow 5 — Startup, migration and mode resolution
 
 ```mermaid
@@ -465,13 +575,13 @@ flowchart TD
     WARN --> INIT
 
     INIT --> TBL{"analyses exists?"}
-    TBL -->|no| CREATE["CREATE TABLE analyses at the v3 shape"]
+    TBL -->|no| CREATE["CREATE TABLE analyses at the v4 shape"]
     TBL -->|yes| MIG["_migrate_analyses()"]
     MIG --> SHAPE{"_is_v1_shape — column order,<br/>NOT NULL flags, label CHECK present?"}
     SHAPE -->|yes| META
     SHAPE -->|no| ADD["ALTER TABLE ADD COLUMN for each missing column (nullable)"]
-    ADD --> REBUILD["_rebuild_analyses:<br/>RENAME to analyses_pre_v1 → CREATE v3 →<br/>INSERT…SELECT (COALESCE provider → 'unknown') → DROP old"]
-    REBUILD --> META["write schema_meta.version = 3"]
+    ADD --> REBUILD["_rebuild_analyses:<br/>RENAME to analyses_pre_v1 → CREATE v4 →<br/>INSERT…SELECT (COALESCE provider → 'unknown') → DROP old"]
+    REBUILD --> META["write schema_meta.version = 4, then<br/>CREATE INDEX IF NOT EXISTS ×3"]
     CREATE --> META
     META --> COMMIT{"commit"}
     COMMIT -->|success| EFF["effective_connection(settings, credential, reason)"]
@@ -483,9 +593,11 @@ flowchart TD
 
 Note the two things that matter for any schema change: `init_db` runs on
 **every** startup, so it is a cheap and idempotent place to create a new index —
-but `_rebuild_analyses` drops any index on `analyses`, because
-`CREATE_ANALYSES_TABLE` declares none (verified empirically; see TD-1). A
-separate table is untouched by the rebuild.
+and the three analytics indexes are now created **after** the rebuild branch, so
+they survive a migration. An index declared only inside `CREATE_ANALYSES_TABLE`
+would still be dropped by `_rebuild_analyses`; the surviving implementation
+creates them idempotently afterwards, and `tests/test_migration_indexes.py`
+asserts their survival. A separate table remains untouched by the rebuild.
 
 ## Improvement Opportunities
 
@@ -494,14 +606,15 @@ restatement of it.
 
 | # | Opportunity | Why it is worth it | Cost | Detail |
 |---|---|---|---|---|
-| 1 | Create any new index on `analyses` **idempotently in `init_db`, after** the rebuild branch | `_rebuild_analyses` silently drops every index on `analyses`, so an index added to `CREATE_ANALYSES_TABLE` disappears on any migrating store — verified | One `CREATE INDEX IF NOT EXISTS` statement | TD-1 |
+| 1 | ~~Create any new index on `analyses` idempotently in `init_db`, after the rebuild branch~~ **Done** | The three analytics indexes are now created idempotently after the rebuild branch and survive a migration (asserted by `tests/test_migration_indexes.py`) | — | TD-1 (closed) |
 | 2 | Prefer a **separate table** over a new column on `analyses` | A column is a five-place edit across `app/db.py`; a separate table survives both migration paths and one DDL statement is the whole cost | Design choice, no new mechanism | TD-2 |
-| 3 | Extract the tokenizer out of `dummy_client.py` | `_WORD` (`app/dummy_client.py:68`) is the only tokenizer in the repo, it is underscore-private, and it lives in the offline engine rather than a shared place | One small module or a constant move | TD-6 |
-| 4 | Add pagination metadata to the read surface | `LIMIT` with no offset, cursor or total count is the only paging mechanism, and it is already the shape the history view uses | One extra query or a window function | TD-7 |
-| 5 | Single-source the record contract | The nine-field contract exists in four hand-maintained places, and the export route adds a fifth positional copy | One `dataclasses.fields()`-driven writer | TD-8 |
-| 6 | Move `ensure_page_state`/connection ownership deliberately | The accepted cross-thread SQLite defect lives in one function, so one decision fixes it for every current and future endpoint | Small, but a behaviour change | TD-5 |
-| 7 | Give the type annotations a mechanical gate | Annotations are 100% applied and unenforced; `ruff` covers style and security but not types | One dev dependency plus a config block | **code-quality-assessment.md** §Type checking |
-| 8 | Put the coverage floor and the ruff rule set somewhere that runs | Neither is enforced automatically today — the only safety net is whoever remembers to run them | One CI job (this scope has no CI) | TD-10 |
+| 3 | ~~Extract the tokenizer out of `dummy_client.py`~~ **Done** | The tokeniser is now the leaf `app/terms.py`; the engine consumes `tokenize()` and parity is pinned by `tests/test_terms.py` | — | A4, TD-6 (closed) |
+| 4 | **Wire the analytics view** — a terms fetch, a date-range control, a partial-failure marker and a superseded-response guard | The server half is complete and fully tested; the page carries a terms placeholder and no range control, so NFR4.6/NFR4.7 have nothing to run against | Page-only change, no new dependency | TD-12; the active intent `261004-analytics-view-packaging` |
+| 5 | **Add the packaging instruments** — verification script, secret scanner, dependency audit, allowlist | The gates run only when someone remembers to run them, and no scan instrument exists at all, so absence must not read as coverage | Dev-extra tools only; the runtime list stays at two | TD-13; the active intent |
+| 6 | Add pagination metadata to the read surface | `LIMIT` with no offset, cursor or total count is the only paging mechanism, and it is already the shape the history view uses | One extra query or a window function | TD-7 |
+| 7 | Single-source the record contract | The nine-field contract exists in several hand-maintained places, plus a positional copy in the export route | One `dataclasses.fields()`-driven writer | TD-8 |
+| 8 | Give the type annotations a mechanical gate | Annotations are 100% applied and unenforced; `ruff` covers style and security but not types | One dev dependency plus a config block | **code-quality-assessment.md** §Type checking |
+| 9 | Put the coverage floor and the ruff rule set somewhere that runs | Neither is enforced automatically today — the only safety net is whoever remembers to run them | One CI job (this scope has no CI) | TD-10 |
 
 ## Boundary Discipline Observed
 
@@ -509,8 +622,7 @@ Stated as observed fact, because these are the properties an extension must not
 break:
 
 - **No circular imports.** The full internal graph is acyclic and descending.
-- **No god module.** The largest is `routes.py` at 387 lines; no function exceeds
-  41 lines, and the longest ones are linear loops rather than deep control flow.
+- **No god module.** The largest module is `routes.py` at 502 lines (its longest function is `import_texts` at 41 lines); the largest test module is `tests/test_analytics_routes.py` at 804 lines. Growth is by accumulation of endpoints, so `routes.py` remains the file an extension should keep watching.
 - **No shared mutable state across boundaries.** The only process-wide mutable
   state is `app.state.session_auth`, owned by the composition root and read
   through a dependency.

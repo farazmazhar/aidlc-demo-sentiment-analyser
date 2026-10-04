@@ -1,26 +1,29 @@
 # Code Quality Assessment — `very-cool-sentiment-analysis` (repo `sentiment-opencode`)
 
-All numbers in this artifact were **re-measured during this synthesis** against
-commit `beeb587`, not carried over from the scan. Commands and results are
-reproduced so they can be re-run.
+All numbers in this artifact were **re-measured by the focused scan** at commit
+`4b67c03`; the prior full-rescan numbers (at `beeb587`) are superseded and were
+not carried forward. Commands and results are reproduced so they can be re-run.
 
 ## Headline
 
 | Signal | State | Assessment |
 |---|---|---|
-| Tests | **118 passed**, 0 failed, 0 skipped | Green |
-| Line coverage | **96.02%** (679 statements, 27 missed) against an **80%** floor | Far above the floor |
+| Tests | **192 passed**, 0 failed, 0 skipped | Green |
+| Line coverage | **97.06%** (884 statements, 26 missed) against an **80%** floor | Far above the floor |
 | Lint | `ruff check app tests` → *All checks passed!* | Clean |
-| Format | `ruff format --check app tests` → *24 files already formatted* | Clean |
-| CI/CD | **None** | The largest process-level gap |
+| Format | `ruff format --check app tests` → *30 files already formatted* | Clean |
+| CI/CD | **None** | The largest process-level gap; the active intent adds a verification script, not CI |
 | Type checking | **None** | Annotations are 100% applied and entirely unenforced |
 | Test doubles | **Zero mock objects** | Every double is a hand-written class at a real seam |
-| Documentation | Strong and unusually traceable | The README *is* the contract of record |
+| Documentation | Strong and unusually traceable | The README *is* the contract of record, though it now carries minor drift (TD-14) |
+| Analytics view | **Half-built** | The server half is complete and tested; the page half is a scaffold (TD-12) |
+| Packaging instruments | **Absent** | No verification script, secret scanner, dependency audit or allowlist (TD-13) |
 
 The short version: this is a small, disciplined codebase with an unusually
-honest documentation practice, whose weaknesses are concentrated in **three
-places** — the database migration path, the absence of any automated gate, and
-the frontend having zero execution coverage.
+honest documentation practice. Its weaknesses are concentrated in **four
+places** — the remaining database-migration hazard (a five-place column edit),
+the absence of any automated gate or scan, the analytics **view** having no
+execution coverage, and the packaging instruments not existing yet.
 
 ---
 
@@ -31,62 +34,58 @@ the frontend having zero execution coverage.
 | | |
 |---|---|
 | Directory | `tests/` — one directory, no sub-directories, no fixtures directory |
-| Harness | `tests/conftest.py` (176 lines) — `asgi_request`, `offline_guard`, `tmp_settings`, `tmp_db_path` |
+| Harness | `tests/conftest.py` (315 lines) — `asgi_request`, `application_started`, `concurrent_requests`, `offline_guard`, `tmp_settings`, `tmp_db_path` |
 | Framework | `pytest` **only**. No `unittest`, no `hypothesis`, no `asyncio` marker |
 | Mocking library | **none** — not even `unittest.mock` |
-| Parametrization | 5 sites, expanding 109 test functions to 118 collected tests |
+| Parametrization | 6 sites, expanding 175 test functions to 192 collected tests |
+| Total | 5 259 lines across 15 test modules plus `conftest.py` |
 
 | Module | Functions | Lines | What it pins |
 |---|---|---|---|
-| `tests/test_db.py` | 8 | 436 | schema creation, migration from pre-v1, column order, NOT NULL flags, label CHECK, `intensity` absence |
-| `tests/test_routes.py` | 15 | 363 | the full `/v1` contract, the envelope, the record field set, `limit` handling |
+| `tests/test_analytics_routes.py` | 25 | 804 | the `/v2` contract, the range parameters, the envelope codes, the R-01 concurrency reproduction |
+| `tests/test_routes.py` | 17 | 416 | the full `/v1` contract, the envelope, the record field set, `limit` handling |
 | `tests/test_bulk_import.py` | 16 | 315 | CSV parsing, header skip, per-row skipping, `import_id` grouping, export round trip |
-| `tests/test_service.py` | 9 | 304 | orchestration order W1, engine resolution precedence, `ImportSummary` aggregation |
+| `tests/test_analytics_read.py` | 15 | 561 | the read module against real SQLite: range resolution, series, ranking, shares |
 | `tests/test_auth_routes.py` | 12 | 259 | the `/auth/*` routes and their redirect behaviour |
-| `tests/test_repository.py` | 8 | 237 | DML, `format_timestamp`, `import_id` scoping, `intensity` never read |
-| `tests/test_live_client.py` | 9 | 220 | typed answer reading, error mapping, transport injection |
 | `tests/test_session_auth.py` | 12 | 196 | PKCE verifier/challenge, expiry, credential redaction, injected exchanger |
 | `tests/test_config.py` | 10 | 180 | the six resolution outcomes, redaction, `git check-ignore`, the dependency-cap assertion |
+| `tests/test_terms.py` | 10 | 212 | tokeniser parity and engine-scoring parity against the promoted tokeniser |
+| `tests/test_live_client.py` | 9 | 220 | typed answer reading, error mapping, transport injection |
+| `tests/test_migration_indexes.py` | 9 | 542 | the v3→v4 migration, index survival, the read-only proof |
+| `tests/test_page.py` | 9 | 171 | served markup, the required test ids, `role`/`aria-live`, asset content type, absence of `intensity` |
+| `tests/test_service.py` | 9 | 304 | orchestration order W1, engine resolution precedence, `ImportSummary` aggregation |
+| `tests/test_db.py` | 8 | 443 | schema creation, migration from pre-v1, column order, NOT NULL flags, label CHECK, `intensity` absence |
+| `tests/test_repository.py` | 8 | 237 | row DML, `format_timestamp`, `import_id` scoping, `intensity` never read |
 | `tests/test_dummy_client.py` | 6 | 84 | keyword classification, and that the offline guard is actually armed |
-| `tests/test_page.py` | 4 | 77 | served markup, 14 `data-testid` hooks, `role="status"`, `aria-live`, asset content type, absence of `intensity` |
 
-The largest test module covers the **migration path** — 436 lines against 243
+The largest test modules cover the **analytics read path** —
+`test_analytics_routes.py` (804) and `test_analytics_read.py` (561) against 374
+lines of `app/analytics.py` — plus `test_migration_indexes.py` (542) against 339
 lines of `app/db.py`. That ratio is the clearest signal of where this project's
 risk actually lives.
 
 ### Measured coverage
 
-Command: `python -m pytest -q`
+Command: `python -m pytest -q` → **192 passed**, line coverage **97.06%**
+(884 statements, 26 missed) against the 80% floor.
 
-```
-Name                       Stmts   Miss  Cover   Missing
---------------------------------------------------------
-app/__init__.py                2      0   100%
-app/config.py                 54      0   100%
-app/db.py                     66      1    98%   208
-app/dummy_client.py           23      0   100%
-app/main.py                   42      1    98%   49
-app/models.py                 33      0   100%
-app/openrouter_client.py      80      6    92%   89-96
-app/repository.py             23      0   100%
-app/routes.py                144      2    99%   217-218
-app/sentiment.py              22      0   100%
-app/service.py                73      0   100%
-app/session_auth.py          117     17    85%   84-120
---------------------------------------------------------
-TOTAL                        679     27    96%
-Required test coverage of 80% reached. Total coverage: 96.02%
-```
+Per-module misses (every other module is at 100%):
 
-Seven of twelve modules are at **100%**. The 27 missed statements are:
+| Module | Cover | Missing |
+|---|---|---|
+| `app/session_auth.py` | 85% | 84-120 |
+| `app/openrouter_client.py` | 92% | 89-96 |
+| `app/main.py` | 98% | 103 |
+| `app/routes.py` | 99% | 257-258 |
+
+Ten of fourteen modules are at **100%**. The 26 missed statements are:
 
 | Uncovered block | Lines | Why |
 |---|---|---|
 | `exchange_code_at_openrouter` body | `app/session_auth.py:84-120` | Every test injects a double, so the real `urllib` request is never built |
 | `urllib_transport` body | `app/openrouter_client.py:89-96` | Same reason — the transport is always injected |
-| `csv.Error` branch | `app/routes.py:217-218` | Hard to provoke; Python's `csv` reader is permissive |
-| `PRAGMA table_info` absence guard | `app/db.py:208` | A table always has DDL text |
-| logging-handler guard | `app/main.py:49` | Environment-dependent |
+| logging-handler guard | `app/main.py:103` | Environment-dependent |
+| `csv.Error` branch | `app/routes.py:257-258` | Hard to provoke; Python's `csv` reader is permissive |
 
 The first two are **by design** — the dependency cap forbids an HTTP client
 library, so the transport is the injection point. The cost is that the two places
@@ -131,8 +130,7 @@ and braces: forgetting to pass `--cov` cannot silently skip the gate.
 
 | Gap | Why | Consequence |
 |---|---|---|
-| Browser-side execution of `app.js` | No browser-automation dependency is permitted under the cap; `tests/test_page.py:1-6` states this explicitly | The page's behaviour is unverified. The markup and the asset are pinned; **nothing that runs is** |
-| Concurrency | No thread/concurrency test exists anywhere | The accepted R-01 defect has **no reproducing test** |
+| Browser-side execution of `app.js` | No browser-automation dependency is permitted under the cap; `tests/test_page.py` states this explicitly | The page's behaviour is unverified. The markup and the asset are pinned; **nothing that runs is**. This is now the blocker for NFR4.6/NFR4.7 (TD-12) |
 | The two production HTTP transports | Injected doubles by design | TD-9 |
 | Real PostgreSQL/SQLite-server behaviour | N/A — the store is a local file | — |
 | Performance / load | None, and none needed at local scale | — |
@@ -152,7 +150,7 @@ commit.
 $ python -m ruff check app tests
 All checks passed!
 $ python -m ruff format --check app tests
-24 files already formatted
+30 files already formatted
 ```
 
 | Setting | Value | Note |
@@ -173,8 +171,8 @@ a deliberate configuration decision, not of not running the tool.
 **Absent.** No `mypy`, no `pyright`, no `py.typed` marker.
 
 This matters more than usual here, because the codebase already holds to the
-convention a checker would enforce: `from __future__ import annotations` in all
-12 modules and full annotations on **every** public function, with only two
+convention a checker would enforce: `from __future__ import annotations` in 13 of
+14 modules and full annotations on **every** public function, with only two
 `# type: ignore[method-assign]` suppressions in the entire tree (both in the
 offline guard, `tests/conftest.py:152,156`). The two `# type: ignore` comments
 already anticipate a checker. Adding one would be close to free — the convention
@@ -201,7 +199,7 @@ plus an end-to-end command that boots the app on `127.0.0.1:8141` and reads
 suite, then start the app and exercise the changed path — because `pytest` alone
 never starts a server and never resolves `uvicorn app:app`.
 
-The coverage floor, the ruff rule set and the 118 green tests are therefore the
+The coverage floor, the ruff rule set and the 192 green tests are therefore the
 **only** safety net, and they run only when whoever is working remembers to run
 them. That is TD-10.
 
@@ -213,8 +211,8 @@ them. That is TD-10.
 
 | Artifact | State |
 |---|---|
-| `README.md` (266 lines) | Genuinely maintained: setup, run, test/lint commands, the in-app connection flow, the two modes, configuration, the storage/migration contract, the **HTTP surface table** (all 11 routes, each with its behaviour), the file-layout tree, known limitations, and an end-to-end verification command. Every route and constant in the table matches the code. |
-| Module docstrings | All 12 modules; 11 carry an explicit `Single responsibility:` line naming what the module does **not** contain |
+| `README.md` (365 lines) | Genuinely maintained: setup, run, test/lint commands, the in-app connection flow, the two modes, configuration, the storage/migration contract, the **HTTP surface table** (now including the `/v2` analytics rows), the file-layout tree (now listing `analytics.py`, `terms.py` and the four analytics test modules), known limitations, and an end-to-end verification command. It now carries one minor drift (TD-14). |
+| Module docstrings | All 14 modules, each carrying an explicit `Single responsibility:` line naming what the module does **not** contain (the two new modules included) |
 | Function docstrings | Present throughout, frequently citing the rule the function enforces |
 | Embedded traceability | `FR4.1`, `NFR3.1`, `BR4.3`, `AC7.1.2`, `R-01`, `R-04`, `D1`–`D4`, `W1` appear in docstrings and comments throughout `app/` and `tests/`, and the same IDs are used in the README |
 | Constants | Semantic constants carry `#:` prose stating why |
@@ -226,18 +224,21 @@ without those upstream artifacts, and the IDs are not mechanically generated, so
 they can drift from the requirements they cite. Treat them as a human-maintained
 cross-reference, not a verified link.
 
-**Structural metrics.** No file exceeds 500 lines. Longest functions are
-`import_texts` (41) and `SessionAuth.complete` (41), both linear loops. No class
-exceeds 100 lines. No SQL in `routes.py`, no sentiment logic in `routes.py`, no
-HTTP in `service.py`. No circular imports. Zero `TODO`/`FIXME`/`HACK`/`XXX`.
+**Structural metrics.** The largest module is `app/routes.py` at 502 lines; the
+largest test module is `tests/test_analytics_routes.py` at 804. Longest functions
+are `import_texts` (41) and `SessionAuth.complete` (41), both linear loops. No
+class exceeds 100 lines. No SQL in `routes.py`, no sentiment logic there, no HTTP
+in `service.py`; the analytics read module imports nothing from `fastapi` and
+opens no socket. No circular imports. Zero `TODO`/`FIXME`/`HACK`/`XXX`.
 
-**Suppressions: nine, all narrow and justified.**
+**Suppressions: narrow and justified.**
 
 | Count | Suppression | Justification |
 |---|---|---|
-| 4 | `# pragma: no cover` | Branches unreachable by construction: `app/db.py:190`, `app/repository.py:22`, `app/routes.py:353`, `tests/test_config.py:165` |
-| 4 | `# noqa: S310` on `urllib` calls | The endpoint is a hardcoded `https` constant, commented as such: `app/openrouter_client.py:89,93`; `app/session_auth.py:88,96` |
-| 2 | `# type: ignore[method-assign]` | Replacing `socket.socket.connect` in the offline guard: `tests/conftest.py:152,156` |
+| 4 | `# pragma: no cover` | Branches unreachable by construction: `app/db.py`, `app/repository.py`, `app/routes.py`, `tests/test_config.py` |
+| 4 | `# noqa: S310` on `urllib` calls | The endpoint is a hardcoded `https` constant, commented as such: `app/openrouter_client.py`; `app/session_auth.py` |
+| 1 | `# noqa: S105` on the token pattern | `TOKEN_PATTERN` is a word regex, not a credential: `app/terms.py:27` |
+| 2 | `# type: ignore[method-assign]` | Replacing `socket.socket.connect` in the offline guard: `tests/conftest.py` |
 
 No blanket suppressions, no file-level `# ruff: noqa`.
 
@@ -247,28 +248,20 @@ No blanket suppressions, no file-level `# ruff: noqa`.
 
 Severity is about **cost to the next change**, not about correctness today.
 
-### TD-1 — The migration silently drops every index on `analyses` · **High**
+### TD-1 — The migration dropped every index on `analyses` · **CLOSED**
 
-`_rebuild_analyses` (`app/db.py:233-243`) renames the table to `analyses_pre_v1`,
-creates a fresh `analyses` from `CREATE_ANALYSES_TABLE`, copies rows, and drops
-the old table. `CREATE_ANALYSES_TABLE` (`app/db.py:40-53`) **declares no indexes
-at all**, so nothing recreates them.
+`_rebuild_analyses` renames the table to `analyses_pre_v1`, creates a fresh
+`analyses` from `CREATE_ANALYSES_TABLE`, copies rows, and drops the old table.
+Because that DDL declared no indexes, an index on `analyses` was silently lost on
+any migrating store — verified empirically at `beeb587`.
 
-**Verified empirically** at this commit: a store carrying
-`CREATE INDEX idx_analyses_created ON analyses(created_at)` plus a second,
-unrelated table and one row at schema version 2 came out of `init_db` with the
-columns correct, the row preserved (including its `intensity` value), the side
-table untouched and the version bumped to 3 — and `sqlite_master` reporting
-**zero** indexes on `analyses`. Running `init_db` a second time is idempotent and
-changes nothing, so the index is simply gone for good.
-
-**Why it matters.** An index added to `CREATE_ANALYSES_TABLE` disappears on any
-migrating store, with no warning and no failed assertion. The only current
-mitigation is that `analyses` has no index to lose today.
-
-**Fix shape.** Create the index idempotently **inside `init_db`, after** the
-rebuild branch — `CREATE INDEX IF NOT EXISTS` — since `init_db` runs on every
-startup. A separate table is untouched by the rebuild and needs nothing.
+**Closed in `261001-analytics-layer`.** `init_db` now creates the three named
+analytics indexes idempotently **after** the migrate-or-create branch
+(`CREATE INDEX IF NOT EXISTS`), and `_rebuild_analyses` re-creates all three by
+name as steps after the copy. `tests/test_migration_indexes.py` (9 functions,
+542 lines) asserts that the indexes survive a v3 → v4 migration. The lesson
+survives as a pattern: an index on a rebuilt table must be created outside the
+table's own DDL.
 
 ### TD-2 — Adding a column to `analyses` is a five-place edit · **Medium**
 
@@ -286,14 +279,15 @@ Any one missed produces either a false v1 shape or an aborted copy. **A separate
 table, or an index created idempotently in `init_db`, is far cheaper** — and a
 separate table was verified to survive both migration paths.
 
-### TD-3 — The committed dev database is one schema version behind the code · **Low**
+### TD-3 — The local dev database has migrated forward in place · **CLOSED (observed)**
 
-`data/sentiment.db` reports `schema_meta.version = 2` with columns lacking
-`import_id`, while `SCHEMA_VERSION = 3`. It holds 0 rows and `/data/` is
-gitignored (`.gitignore:94`), so this is local machine state only — but it means
-**the v2 → v3 path has never actually run against that file**.
+`data/sentiment.db` now reports `schema_meta.version = 4` with the three named
+indexes present and 7 rows, so the store has migrated v2 → v3 → v4 in place
+without loss. `/data/` is gitignored, so this is local machine state only. The
+observation is kept because it is the one live migration the project can point
+to; the v2 → v3 → v4 path has now actually run against that file.
 
-### TD-4 — The retired `intensity` attribute makes a "mean intensity" metric impossible · **High (contract, not code)**
+### TD-4 — The retired `intensity` attribute still makes a "mean intensity" metric impossible · **CLOSED (contract)**
 
 `intensity` is a **retired** column, and its retirement is deliberate and
 asserted in three test files:
@@ -308,38 +302,41 @@ asserted in three test files:
   back-filled (BR3.4)
 
 **Consequence.** `AVG(intensity)` over the current `analyses` table returns
-`NULL` for every row written since v1. Any requirement asking for a mean
-intensity is asking for a value this system does not produce. This is the one
-requirement that **cannot be implemented as written without a human decision** —
-return `null`, omit the field, or reintroduce a written intensity column (which
-reverses a v1 decision and breaks the page assertion). See §Unresolved Contract
-Conflict below.
+`NULL` for every row written since v1. **Resolved:** the prior intent
+(`261001-analytics-layer`) dropped `mean intensity` from the summary requirement
+rather than reporting a null or synthesising a proxy, so no live requirement asks
+for it. The column stays retired; a future request for a mean intensity is still
+asking for a value this system does not produce.
 
-### TD-5 — Accepted cross-thread SQLite defect, inherited by every new endpoint · **Medium (known, accepted)**
+### TD-5 — Cross-thread SQLite connection affinity (R-01) · **CLOSED**
 
 A per-request `sqlite3.Connection` created in one anyio worker thread
-(`get_connection`, `app/routes.py:92-98`) and closed in another raises
-`sqlite3.ProgrammingError` and answers `500` when requests overlap. Sequential use
-is unaffected. The README records it and the fix as explicitly out of scope for
-v1, and the finding was accepted by the human at the Code Generation gate.
+(`get_connection`, `app/routes.py:114`) and used from another raised
+`sqlite3.ProgrammingError` when requests overlapped; sequential use was
+unaffected. The team rule that every defect ships a reproducing test closed
+R-01's exemption, and the old ASGI harness could not host such a test.
 
-**Why it is still worth naming.** `get_connection` is the single place it
-happens, so **every current and future endpoint inherits it**, and a polling,
-date-range-filtered analytics page is precisely the access pattern most likely to
-expose it. Treat it as a known, already-documented constraint — and note that
-one decision in one function would fix it for everything.
+**Closed in `261001-analytics-layer`.** `app/db.py` now decides thread affinity
+explicitly: `connect` opens with `check_same_thread=False`, safe only under the
+documented request-scoped invariant — one connection per request, closed in that
+request's own `finally`, never pooled, cached, stored on a module global or
+shared between concurrent requests. The harness grew `concurrent_requests` +
+`application_started`, and `tests/test_analytics_routes.py` carries the
+reproduction. The flag is **not** a licence to share a connection across threads:
+re-enable the guard or make any pooling thread-safe before introducing it.
 
-### TD-6 — `_WORD` is the only tokenizer, and it lives in the wrong module · **Medium**
+### TD-6 — The tokeniser lived in the wrong module · **CLOSED**
 
-`app/dummy_client.py:68` declares `_WORD = re.compile(r"[a-z']+")`, used at
-line 83. It is the **only** tokenizer in the codebase, it is underscore-private,
-and it sits in the *offline engine* rather than in a shared place.
+`_WORD = re.compile(r"[a-z']+")` was underscore-private inside
+`app/dummy_client.py` and was the **only** tokeniser in the codebase, so a second
+consumer either reached into an unrelated module's private name or duplicated the
+regex.
 
-**Consequence.** Any second consumer either reaches into an unrelated module's
-private name or duplicates the regex. The codebase has **no** `utils.py` or
-`helpers.py` by a deliberate convention (a helper lives with the concept it
-serves), so there is no obvious destination — which is exactly why this needs a
-named decision rather than an import.
+**Closed in `261001-analytics-layer`.** The pattern is promoted to the leaf
+`app/terms.py`, exposed through `tokenize()` (no filters, so the engine's scoring
+is byte-for-byte unchanged) and `significant_terms()` (the length + stopword
+filter). Both `app.dummy_client` and `app.analytics` consume it, and
+`tests/test_terms.py` pins tokeniser and engine-scoring parity (A4).
 
 ### TD-7 — No pagination beyond a bare `LIMIT` · **Medium**
 
@@ -393,11 +390,69 @@ that includes a pipeline.
 
 `app.js` is served and its markup contract is pinned, but **nothing in the suite
 executes it**. No browser-automation dependency is permitted under the
-two-package cap, and `tests/test_page.py:1-6` says so plainly. The practical
+two-package cap, and `tests/test_page.py` says so plainly. The practical
 consequence: a behavioural regression in the page — a wrong fetch URL, a broken
 `textContent` write, a date-filter handler that never fires — would pass the whole
-suite. This scope includes no CI and no new dev dependency, so the gap is
-structural rather than a choice to make here.
+suite. This is now the specific blocker for NFR4.6 and NFR4.7 (see TD-12).
+
+### TD-12 — The analytics view is a scaffold, and it is this intent's gap · **High (intent-relevant)**
+
+The server half of analytics is complete and heavily tested; the page half is not.
+
+- The nav (`nav-summary`, `nav-terms`) and the summary region already exist
+  (`app/static/index.html:192-193`, `:270`), but the terms section (`:328`) is a
+  **static placeholder** with no term-list containers.
+- There is **no date-range control** anywhere, and `refreshSummary` fetches
+  `${API_V2}/analytics/summary` with **no query string** (`app/static/app.js:242`);
+  there is no terms fetch.
+- There is **no partial-failure marker** (NFR4.6): only the summary's own regions
+  are managed, so one section cannot visibly succeed while another fails.
+- There is **no superseded-response guard** (NFR4.7): no `AbortController` and no
+  request-sequence counter exists.
+
+**Why it is decidable but not testable today.** `tests/test_page.py` deliberately
+never executes `app.js` (TD-11), and the cap forbids browser automation, so
+NFR4.6/NFR4.7 must be restated as static served-asset assertions (the script
+carries a sequence guard; each section's render site references only its own
+endpoint's fields) plus the single manual end-to-end line. The active intent
+`261004-analytics-view-packaging` fills this.
+
+### TD-13 — No packaging instruments exist · **Medium (intent-relevant)**
+
+No verification script, secret scanner, dependency audit or allowlist exists
+anywhere in the tree. The only automated "tripwire" is `tests/test_config.py`,
+which asserts the ruff `S` set is selected and `fail_under == 80` — a config
+assertion, not a scan.
+
+- The `dev` extra is the correct home for the scanner/audit tool, so the runtime
+  list stays exactly `["fastapi", "uvicorn"]` (`tests/test_config.py:141-160`).
+- The scanner's first-run allowlist must cover the fake-key fixtures — the
+  `sk-or-v1-*` literals in the test files (`tests/test_auth_routes.py`,
+  `tests/test_config.py`, `tests/test_live_client.py`, `tests/test_routes.py`,
+  `tests/test_service.py`, and the negative assertion in
+  `tests/test_analytics_routes.py`).
+- `filterwarnings = ["error"]` makes suite pass/fail a function of the resolved
+  toolchain, so the scanner/audit runner should be a **separate script
+  invocation**, not an in-suite fixture.
+
+The active intent is the change that adds these.
+
+### TD-14 — README drift: a named symbol that does not exist · **Low**
+
+`README.md:287` describes `app/analytics.py` as "`AnalyticsRead`: range
+resolution, aggregates, series, ranking", but **no `AnalyticsRead` symbol exists**
+in `app/analytics.py` (the surface is `ResolvedRange`, `resolve_range`,
+`read_summary`, `read_terms`). Minor, but the README is the "contract of record".
+
+### TD-15 — Three platform obligations from the prior intent are still open · **Medium**
+
+`261001-analytics-layer`'s platform work (`u4-platform-packaging`) was never
+reached, so three repository-level obligations remain: no lockfile with hashes,
+no `LICENSE`, and no `ruff` `TID251` `banned-api` entries (`pyproject.toml`
+selects `E,F,W,I,N,UP,S,B,C4,SIM` but **not** `TID`). The team/project rules
+(`## Mandated`) require all three. This intent explicitly re-scopes the
+verification script, secret scanner and dependency audit; the other three remain
+outstanding.
 
 ### Observed, not debt
 
@@ -419,39 +474,41 @@ structural rather than a choice to make here.
 
 | ID | Severity | One line |
 |---|---|---|
-| TD-1 | High | The migration silently drops every index on `analyses` |
-| TD-4 | High (contract) | Retired `intensity` makes a mean-intensity metric impossible |
+| TD-12 | High (intent) | The analytics view is a scaffold — no terms fetch, no range control, no partial-failure marker, no superseded-response guard |
 | TD-10 | High (process) | No CI — every gate is opt-in |
 | TD-2 | Medium | A new column on `analyses` is a five-place edit |
-| TD-5 | Medium | Accepted cross-thread SQLite defect, inherited by every new endpoint |
-| TD-6 | Medium | The only tokenizer is a private of the offline engine |
 | TD-7 | Medium | No pagination beyond a bare `LIMIT` |
-| TD-8 | Medium | The record contract has four copies plus a positional fifth |
-| TD-11 | Medium | Zero browser-side execution coverage |
-| TD-3 | Low | The committed dev database is one schema version behind |
+| TD-8 | Medium | The record contract has several copies plus a positional export copy |
+| TD-11 | Medium | Zero browser-side execution coverage — now the NFR4.6/NFR4.7 blocker |
+| TD-13 | Medium (intent) | No verification script, secret scanner, dependency audit or allowlist exists |
+| TD-15 | Medium | Lockfile, LICENSE and `TID251` obligations from the prior intent are open |
 | TD-9 | Low (by design) | The two production HTTP transports are uncovered |
+| TD-14 | Low | README names a non-existent `AnalyticsRead` symbol |
+| TD-1 | — | **Closed** — the migration now creates and preserves the indexes |
+| TD-3 | — | **Closed** — the local DB has migrated to v4 with its indexes and rows |
+| TD-4 | — | **Closed** — `mean intensity` was dropped from the requirement |
+| TD-5 | — | **Closed** — R-01 fixed (`check_same_thread=False` + the request-scoped invariant) and reproduced by test |
+| TD-6 | — | **Closed** — the tokeniser is the leaf `app/terms.py` |
 
 ---
 
-## Unresolved Contract Conflict
+## Resolved Contract Conflict, and the One Still Open
 
-One finding from the scan that is a **requirement question, not a code defect**,
-recorded here so it is not lost between stages.
+**Resolved (prior intent).** An earlier scan raised "mean intensity" as a
+requirement question because `intensity` is retired (TD-4, BR3.4).
+`261001-analytics-layer` settled it by **dropping the field from the summary
+requirement** rather than reporting a null or reintroducing the column, so the
+conflict no longer blocks anything. It is recorded as closed rather than deleted,
+because a future request could reopen it.
 
-The active intent asks for **"mean intensity"** in the analytics summary.
-`intensity` is a **deliberately retired** attribute (TD-4, BR3.4). This is not a
-gap the implementation can close by doing more work — the three possible
-outcomes are all decisions:
-
-| Option | Consequence |
-|---|---|
-| Return `mean_intensity: null` | Honest, and consistent with the in-repo precedent A3 (`mean_confidence` is `null` when nothing was imported). Needs a stated contract for the null case |
-| Omit the field entirely | Also honest; the client then cannot distinguish "no such metric" from "zero" |
-| Reintroduce a written `intensity` column | **Reverses a v1 decision.** Breaks `tests/test_page.py:64-68`, the record contract, and BR3.4, and requires a schema change plus a migration |
-
-The intent's own instruction is that an ambiguous requirement should be raised
-rather than guessed. This is that item, raised at synthesis time because it is
-cheaper to surface here than to discover during code generation.
+**Still open (this intent).** NFR4.6 and NFR4.7 are stated as runtime page
+behaviours (one section can fail while another succeeds; a superseded response is
+discarded), but the dependency cap forbids browser automation and
+`tests/test_page.py` never executes `app.js`. So the criteria **have no decidable
+instrument today** (TD-12, TD-11). Their verifiable half is static served-asset
+structure plus the single manual end-to-end line; any acceptance criterion that
+demands a browser assertion cannot be met under the cap. Raised here because it
+is cheaper to surface at synthesis than to discover during code generation.
 
 ---
 
@@ -462,12 +519,12 @@ run unless marked.
 
 | Property | Evidence |
 |---|---|
-| The suite is green and the floor is satisfied | **Re-measured:** 118 passed, 96.02% |
-| The lint and format checks are clean | **Re-measured:** both green |
+| The suite is green and the floor is satisfied | **Re-measured by the scan:** 192 passed, 97.06% |
+| The lint and format checks are clean | **Re-measured by the scan:** both green (30 files) |
 | No test can reach the network | `offline_guard` replaces `socket.socket.connect`; `tests/test_dummy_client.py` proves the guard is armed |
 | No test touches the real database or config | `tmp_path`-scoped fixtures |
 | `init_db` is idempotent | **Re-measured:** run twice against a migrated store, no change |
-| Migration preserves rows and unrelated tables | **Re-measured:** the row and its `intensity` value survived; a side table survived |
+| Migration preserves rows, indexes and unrelated tables | **Re-measured:** the row and its `intensity` value survived; a side table survived; the three analytics indexes survive a v3 → v4 migration (`tests/test_migration_indexes.py`) |
 | A migration that cannot preserve every row fails loudly | one transaction, `rollback()` on any `BaseException` |
 | SQLite JSON1 and `strftime` are available | **Re-measured:** `json_extract` and `strftime('%Y-%m-%d', …)` both work |
 | The dependency cap holds | asserted by `tests/test_config.py` |

@@ -13,6 +13,10 @@
 const LABEL_ORDER = ["positive", "negative", "neutral"];
 const API = "/v1";
 const API_V2 = "/v2";
+// The two `/v2` reads are addressed through named constants so a prefix or path
+// change is one edit and the range query is appended in exactly one place.
+const ANALYTICS_SUMMARY_PATH = `${API_V2}/analytics/summary`;
+const ANALYTICS_TERMS_PATH = `${API_V2}/analytics/terms`;
 const FALLBACK_AUTH_FAILURE =
   "Connecting the live model did not complete. You can keep using the offline engine.";
 
@@ -44,6 +48,17 @@ const summaryDayCount = document.querySelector('[data-testid="summary-day-count"
 const summarySeriesValues = document.querySelector('[data-testid="summary-series-values"]');
 const summarySeriesLine = document.querySelector('[data-testid="summary-series-line"]');
 const summaryBreakdown = document.querySelector('[data-testid="summary-breakdown"]');
+const summaryPartial = document.querySelector('[data-testid="summary-partial"]');
+
+const analyticsRange = document.querySelector('[data-testid="analytics-range"]');
+const rangeFrom = document.querySelector('[data-testid="range-from"]');
+const rangeTo = document.querySelector('[data-testid="range-to"]');
+const rangeStatus = document.querySelector('[data-testid="range-status"]');
+const termsPositive = document.querySelector('[data-testid="terms-positive"]');
+const termsNegative = document.querySelector('[data-testid="terms-negative"]');
+const termsEmpty = document.querySelector('[data-testid="terms-empty"]');
+const termsError = document.querySelector('[data-testid="terms-error"]');
+const termsPartial = document.querySelector('[data-testid="terms-partial"]');
 
 /** Read the app's error envelope (`{code, message}`) from a non-2xx response. */
 async function readErrorMessage(response) {
@@ -153,19 +168,55 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-// -- the analytics summary region --------------------------------------------
+// -- the analytics view: range, summary and terms ----------------------------
 //
-// Exactly one fetch drives this region, to its own endpoint, and every figure it
-// writes comes from that response. Loading, empty and error are three distinct
-// regions rather than one panel that means different things at different moments
-// (FR6.2, FR6.7, AC6.2.2, AC6.5.5).
+// One range control drives two independent reads, so the summary and the term
+// lists always describe one population (FR1.4). Each section renders its own
+// outcome, so one failed request never blanks the other (FR1.10, NFR4.6). A
+// refresh takes a token and aborts the previous request, so a late response from
+// an earlier range can never overwrite a newer one (FR1.11, NFR4.7); the view
+// never re-sends a failed request on its own.
 
-/** Hide every analytics region; each is revealed only by its own outcome. */
+let analyticsRequestToken = 0;
+let analyticsAbortController = null;
+
+/** The query string for the current range; both bounds empty means all history. */
+function rangeQuery() {
+  const params = new URLSearchParams();
+  if (rangeFrom.value) {
+    params.set("from", rangeFrom.value);
+  }
+  if (rangeTo.value) {
+    params.set("to", rangeTo.value);
+  }
+  const query = params.toString();
+  return query === "" ? "" : `?${query}`;
+}
+
+/** Write the current range into the page's live region, so a change is announced. */
+function announceRange() {
+  const from = rangeFrom.value || "the beginning of history";
+  const to = rangeTo.value || "today";
+  rangeStatus.textContent = `Showing analyses from ${from} to ${to}.`;
+}
+
+/** Hide every summary region; each is revealed only by its own outcome. */
 function resetAnalyticsRegions() {
   analyticsSummary.hidden = true;
   analyticsEmpty.hidden = true;
   analyticsError.hidden = true;
   analyticsError.textContent = "";
+  summaryPartial.hidden = true;
+  summaryPartial.textContent = "";
+}
+
+/** Hide every terms region; each is revealed only by its own outcome. */
+function resetTermsRegions() {
+  termsEmpty.hidden = true;
+  termsError.hidden = true;
+  termsError.textContent = "";
+  termsPartial.hidden = true;
+  termsPartial.textContent = "";
 }
 
 /** Read the app's envelope from a failed response, without the machine code. */
@@ -234,25 +285,136 @@ function renderSummary(summary) {
   analyticsEmpty.hidden = summary.total !== 0;
 }
 
-/** Fetch the summary once and render whichever of the three regions it calls for. */
-async function refreshSummary() {
-  resetAnalyticsRegions();
+/** Render one ranked term list from the endpoint's own `{term, count}` entries. */
+function renderTermList(list, entries) {
+  list.replaceChildren();
+  for (const entry of entries) {
+    const item = document.createElement("li");
+    item.className = "term-item";
+    const name = document.createElement("span");
+    name.className = "term-name";
+    name.textContent = entry.term;
+    const count = document.createElement("span");
+    count.className = "term-count";
+    count.textContent = String(entry.count);
+    item.append(name, count);
+    list.append(item);
+  }
+}
+
+/** Paint both term lists; "no terms" is its own region, not an empty list. */
+function renderTerms(terms) {
+  renderTermList(termsPositive, terms.positive);
+  renderTermList(termsNegative, terms.negative);
+  const empty = terms.positive.length === 0 && terms.negative.length === 0;
+  termsEmpty.hidden = !empty;
+  return empty ? "empty" : "ok";
+}
+
+/** Fetch the summary for `query`; returns "ok", "empty", "error" or "superseded". */
+async function refreshSummary(token, signal, query) {
   let response;
   try {
-    response = await fetch(`${API_V2}/analytics/summary`);
+    response = await fetch(`${ANALYTICS_SUMMARY_PATH}${query}`, { signal });
   } catch (error) {
+    if (token !== analyticsRequestToken) {
+      return "superseded";
+    }
     analyticsError.textContent = `Could not reach the server: ${error.message}`;
     analyticsError.hidden = false;
-    return;
+    return "error";
+  }
+  if (token !== analyticsRequestToken) {
+    return "superseded";
   }
   if (!response.ok) {
     // A failure renders as a failure, never as a plausible-looking empty result.
     analyticsError.textContent = await readAnalyticsError(response);
     analyticsError.hidden = false;
+    return "error";
+  }
+  const summary = await response.json();
+  if (token !== analyticsRequestToken) {
+    return "superseded";
+  }
+  renderSummary(summary);
+  return summary.total === 0 ? "empty" : "ok";
+}
+
+/** Fetch the term lists for `query`; returns "ok", "empty", "error" or "superseded". */
+async function refreshTerms(token, signal, query) {
+  let response;
+  try {
+    response = await fetch(`${ANALYTICS_TERMS_PATH}${query}`, { signal });
+  } catch (error) {
+    if (token !== analyticsRequestToken) {
+      return "superseded";
+    }
+    termsError.textContent = `Could not reach the server: ${error.message}`;
+    termsError.hidden = false;
+    return "error";
+  }
+  if (token !== analyticsRequestToken) {
+    return "superseded";
+  }
+  if (!response.ok) {
+    termsError.textContent = await readAnalyticsError(response);
+    termsError.hidden = false;
+    return "error";
+  }
+  const terms = await response.json();
+  if (token !== analyticsRequestToken) {
+    return "superseded";
+  }
+  return renderTerms(terms);
+}
+
+/** Mark the failed section while the successful one keeps its data (NFR4.6). */
+function showPartialFailures(summaryOutcome, termsOutcome) {
+  if (summaryOutcome === "error" && termsOutcome !== "error") {
+    summaryPartial.textContent =
+      "The summary could not be loaded; the term lists below are still current.";
+    summaryPartial.hidden = false;
+  }
+  if (termsOutcome === "error" && summaryOutcome !== "error") {
+    termsPartial.textContent =
+      "The term lists could not be loaded; the summary above is still current.";
+    termsPartial.hidden = false;
+  }
+}
+
+/** Refetch both sections on the current range, superseding any in-flight request. */
+async function refreshAnalytics() {
+  analyticsRequestToken += 1;
+  const token = analyticsRequestToken;
+  if (analyticsAbortController) {
+    analyticsAbortController.abort();
+  }
+  analyticsAbortController = new AbortController();
+  const signal = analyticsAbortController.signal;
+  const query = rangeQuery();
+
+  resetAnalyticsRegions();
+  resetTermsRegions();
+
+  const [summaryOutcome, termsOutcome] = await Promise.all([
+    refreshSummary(token, signal, query),
+    refreshTerms(token, signal, query),
+  ]);
+
+  if (token !== analyticsRequestToken) {
+    // A newer refresh is in flight; this response is stale and is discarded.
     return;
   }
-  renderSummary(await response.json());
+  announceRange();
+  showPartialFailures(summaryOutcome, termsOutcome);
 }
+
+analyticsRange.addEventListener("submit", (event) => {
+  event.preventDefault();
+  refreshAnalytics();
+});
+analyticsRange.addEventListener("change", refreshAnalytics);
 
 // -- OpenRouter connection indicator ----------------------------------------
 // Red means the app is running the offline engine; green means it is talking to
@@ -311,7 +473,7 @@ async function toggleConnection() {
 connectionIndicator.addEventListener("click", toggleConnection);
 
 refreshHistory();
-refreshSummary();
+refreshAnalytics();
 refreshConnection().then((connection) => {
   if (connection) {
     reportAuthOutcome(connection);

@@ -46,6 +46,19 @@ REQUIRED_TEST_IDS = (
     "summary-breakdown",
     "analytics-empty",
     "analytics-error",
+    # The analytics view wiring added by this intent: the shared date-range
+    # control, the two term-list containers, and the per-section failure regions
+    # (FR1.3, FR1.10, FR1.11, FR6.9).
+    "analytics-range",
+    "range-from",
+    "range-to",
+    "range-status",
+    "terms-positive",
+    "terms-negative",
+    "terms-empty",
+    "terms-error",
+    "summary-partial",
+    "terms-partial",
 )
 
 
@@ -169,3 +182,86 @@ def test_the_analytics_script_renders_from_returned_values_only(app):
     # turns a fraction into a percentage.
     assert "NO_SHARE_TEXT" in script
     assert script.count("toFixed(2)}%") == 1
+
+
+# -- the analytics view wiring (FR1) -----------------------------------------
+
+
+def test_the_terms_section_ships_two_lists_and_the_shared_range_control(app):
+    """FR1.1-FR1.3, FR1.6: the range control and both term-list containers exist.
+
+    The range control is native `<input type="date">` elements that default to
+    empty — all history, no bounds — and the page carries no `import_id`
+    affordance, because that filter stays API-only.
+    """
+    body = _body_markup(app)
+
+    for hook in ("analytics-range", "range-from", "range-to", "terms-positive", "terms-negative"):
+        assert f'data-testid="{hook}"' in body, f"missing {hook}"
+    assert body.count('type="date"') == 2
+    # Both bounds default to empty, so the first render is the unfiltered view.
+    assert 'value="' not in body
+    # No `import_id` control exists on the page.
+    assert "import_id" not in body
+
+
+def test_the_range_control_is_labelled_and_announces_its_state(app):
+    """FR1.8: each bound is labelled and the range status is a live region."""
+    body = _body_markup(app)
+
+    assert 'for="range-from"' in body
+    assert 'for="range-to"' in body
+    assert 'id="range-from"' in body
+    assert 'id="range-to"' in body
+    assert 'data-testid="range-status"' in body
+    assert 'role="status"' in body
+
+
+def test_the_partial_failure_markers_ship_hidden(app):
+    """FR1.10, NFR4.6: each section ships a hidden partial-failure marker."""
+    body = _body_markup(app)
+
+    for hook in ("summary-partial", "terms-partial", "terms-empty", "terms-error"):
+        assert f'data-testid="{hook}"' in body, f"missing {hook}"
+        element = body[body.index(f'data-testid="{hook}"') :][:200]
+        assert "hidden" in element, f"{hook} must ship hidden"
+
+
+def test_the_terms_script_fetches_both_endpoints_on_the_same_bounds(app):
+    """FR1.4, FR1.5: one range drives both `/v2` reads and nothing else."""
+    script = asgi_request(app, "GET", "/static/app.js").text
+
+    assert script.count("`${API_V2}/analytics/summary`") == 1
+    assert script.count("`${API_V2}/analytics/terms`") == 1
+    # The same two inputs build the query for both reads.
+    assert "rangeFrom.value" in script
+    assert "rangeTo.value" in script
+    # The API-only import filter is never sent by the page.
+    assert "import_id" not in script
+
+
+def test_the_analytics_script_supersedes_a_late_response(app):
+    """FR1.11, NFR4.7: an AbortController plus a token discard stale responses."""
+    script = asgi_request(app, "GET", "/static/app.js").text
+
+    assert "AbortController" in script
+    assert "analyticsAbortController.abort()" in script
+    assert "analyticsRequestToken" in script
+    # The token is compared before a response is allowed to paint.
+    assert "token !== analyticsRequestToken" in script
+    # No silent automatic retry: no retry loop and no timer around the fetches.
+    assert "setTimeout" not in script
+    assert "retry" not in script.lower()
+
+
+def test_the_terms_script_renders_both_lists_from_returned_values(app):
+    """FR1.2, FR1.6: both lists are built with textContent and replaceChildren."""
+    script = asgi_request(app, "GET", "/static/app.js").text
+
+    assert "renderTermList(termsPositive, terms.positive)" in script
+    assert "renderTermList(termsNegative, terms.negative)" in script
+    assert "list.replaceChildren()" in script
+    assert "name.textContent" in script
+    assert "count.textContent" in script
+    for sink in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write"):
+        assert sink not in script

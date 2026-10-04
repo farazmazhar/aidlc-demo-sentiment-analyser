@@ -69,12 +69,14 @@ Read this as "`X` imports `Y`". The graph is **acyclic and descending**.
 |---|---|---|
 | `app/__init__.py` | `app.main` | 1 |
 | `app/main.py` | `app.db`, `app.config`, `app.routes`, `app.sentiment`, `app.service`, `app.session_auth` | 6 |
-| `app/routes.py` | `app.db` (for `connect` only), `app.config`, `app.models`, `app.repository`, `app.sentiment`, `app.service`, `app.session_auth` | 7 |
+| `app/routes.py` | `app.db` (for `connect` only), `app.config`, `app.models`, `app.repository`, `app.analytics`, `app.sentiment`, `app.service`, `app.session_auth` | 8 |
 | `app/service.py` | `app.config`, `app.dummy_client`, `app.models`, `app.repository`, `app.sentiment`, `app.session_auth` | 6 |
-| `app/repository.py` | `app.models`; `app.sentiment` **under `TYPE_CHECKING` only** (`app/repository.py:22-23`) | 1 (+0 at runtime) |
+| `app/analytics.py` | `app.models`, `app.sentiment`, `app.terms` | 3 |
+| `app/repository.py` | `app.models`; `app.sentiment` **under `TYPE_CHECKING` only** (`app/repository.py`) | 1 (+0 at runtime) |
 | `app/db.py` | `app.models` (for `UNKNOWN_PROVIDER` only) | 1 |
-| `app/dummy_client.py` | `app.sentiment` | 1 |
+| `app/dummy_client.py` | `app.sentiment`, `app.terms` | 2 |
 | `app/openrouter_client.py` | `app.sentiment` | 1 |
+| `app/terms.py` | — | 0 |
 | `app/config.py` | — | 0 |
 | `app/sentiment.py` | — | 0 |
 | `app/session_auth.py` | — | 0 |
@@ -89,15 +91,17 @@ graph does not show, and it is deliberate.
 
 | Module | Imported by | Fan-in | Layer |
 |---|---|---|---|
-| `app/sentiment.py` | `main`, `routes`, `service`, `repository`(`TYPE_CHECKING`) | 4 | leaf |
-| `app/models.py` | `routes`, `service`, `repository`, `db` | 4 | leaf |
+| `app/sentiment.py` | `main`, `routes`, `service`, `analytics`, `repository`(`TYPE_CHECKING`) | 5 | leaf |
+| `app/models.py` | `routes`, `service`, `repository`, `db`, `analytics` | 5 | leaf |
 | `app/config.py` | `main`, `routes`, `service` | 3 | leaf |
 | `app/session_auth.py` | `main`, `routes`, `service` | 3 | leaf |
+| `app/terms.py` | `dummy_client`, `analytics` | 2 | leaf |
 | `app/db.py` | `main`, `routes` | 2 | persistence |
 | `app/repository.py` | `routes`, `service` | 2 | persistence |
 | `app/main.py` | `__init__` | 1 | composition root |
 | `app/dummy_client.py` | `service` | 1 | adapter |
 | `app/openrouter_client.py` | `service` *(function-local)* | 1 | adapter |
+| `app/analytics.py` | `routes` | 1 | read module |
 | `app/routes.py` | `main` | 1 | HTTP edge |
 | `app/__init__.py` | — | 0 | re-export |
 
@@ -116,10 +120,15 @@ graph LR
     RT --> SVC
     RT --> REPO["app/repository.py"]
     RT --> MOD["app/models.py"]
+    RT --> ANL["app/analytics.py"]
     RT --> CFG
     RT --> DB
     RT --> SENT
     RT --> AUTH
+
+    ANL --> MOD
+    ANL --> SENT
+    ANL --> TRM["app/terms.py"]
 
     SVC --> REPO
     SVC --> MOD
@@ -133,11 +142,12 @@ graph LR
     REPO -.->|"TYPE_CHECKING only"| SENT
     DB --> MOD
     DUMMY --> SENT
+    DUMMY --> TRM
     LIVE --> SENT
 
     classDef leaf fill:#e8f4ea,stroke:#4a7
     classDef core fill:#eef2fb,stroke:#57a
-    class CFG,SENT,AUTH,MOD leaf
+    class CFG,SENT,AUTH,MOD,TRM leaf
     class SVC core
 ```
 
@@ -150,14 +160,17 @@ graph LR
         │
   app/routes.py                    ← HTTP edge
         │
-  app/service.py  ──────────────►  app/session_auth.py
-        │                                    │
-        ├──► app/dummy_client.py             │
-        ├──► app/openrouter_client.py ───────┘   (both implement SentimentClient)
-        ├──► app/sentiment.py ◄────────────┘    (leaf: the engine contract)
-        ├──► app/repository.py ──► app/models.py
-        ├──► app/config.py                      (leaf)
-        └──► app/models.py                      (leaf: the record contract)
+        ├──► app/service.py  ──────────────►  app/session_auth.py
+        │         │                                      │
+        │         ├──► app/dummy_client.py ──► app/terms.py   (leaf)
+        │         ├──► app/openrouter_client.py ─────────────┘  (both implement SentimentClient)
+        │         ├──► app/sentiment.py                         (leaf: the engine contract)
+        │         ├──► app/repository.py ──► app/models.py
+        │         ├──► app/config.py                            (leaf)
+        │         └──► app/models.py                            (leaf: the record contract)
+        │
+        ├──► app/repository.py        (row reads, straight from the route)
+        └──► app/analytics.py ──► app/models.py, app/sentiment.py, app/terms.py
 
   app/db.py ──► app/models.py        (imports UNKNOWN_PROVIDER only)
 ```
@@ -167,8 +180,8 @@ graph LR
 | Property | Status | How it was established |
 |---|---|---|
 | **No circular imports** | Holds | The full internal import graph is a descending chain. `repository → sentiment` is the only edge that would close a loop, and it is confined to `TYPE_CHECKING` so it never executes |
-| **Leaves depend on nothing internal** | Holds | `config`, `sentiment`, `session_auth`, `models` — four of the twelve |
-| **The HTTP edge owns `sqlite3`** | Holds | Only `app/routes.py:92` calls `db.connect` outside `db.py` |
+| **Leaves depend on nothing internal** | Holds | `config`, `sentiment`, `session_auth`, `models`, `terms` — five of the fourteen |
+| **The HTTP edge owns `sqlite3`** | Holds | Only `app/routes.py:114` calls `db.connect` outside `db.py` |
 | **The persistence layer has no runtime engine dependency** | Holds | `repository` consumes any object exposing the `SentimentResult` attributes, under a `TYPE_CHECKING`-only import |
 | **Nothing below `routes.py` imports `fastapi`** | Holds | No `fastapi` import outside `routes.py` and `main.py` |
 | **Single construction site per adapter** | Holds | `get_client` is the only `SentimentClient(...)` construction; `create_app` is the only `SessionAuth()` construction |
@@ -183,7 +196,9 @@ The same relationships expressed by responsibility rather than by import.
 | Concern | Owner | Consumers | Coupling kind |
 |---|---|---|---|
 | **Sentiment engine** | Sentiment Engine Interface | Offline Dummy Engine, Live OpenRouter Engine (both *implement*); Analysis Orchestration, HTTP API Surface (both *import*) | Protocol — the cleanest seam in the system |
-| **Record shape** | Record and Request Contracts | Persistence and Schema, Analysis Orchestration, HTTP API Surface, Configuration (indirectly) | Shared immutable value type |
+| **Record shape** | Record and Request Contracts | Persistence and Schema, Analysis Orchestration, HTTP API Surface, Analytics Read Layer, Configuration (indirectly) | Shared immutable value type |
+| **Analytics read** | Analytics Read Layer | HTTP API Surface (calls `resolve_range`/`read_summary`/`read_terms`) | A read module beside `repository`; receives the request's connection |
+| **Tokenisation** | Term Extraction | Offline Dummy Engine, Analytics Read Layer | Pure leaf function on a token sequence |
 | **Settings** | Configuration and Settings | Application Assembly, HTTP API Surface, Analysis Orchestration, Session Authorization | Shared immutable value type |
 | **Session credential** | Session Authorization | HTTP API Surface, Analysis Orchestration | Injected object |
 | **SQLite** | Persistence and Schema | HTTP API Surface (owns the connection), Application Assembly (runs `init_db`) | Driver — a stdlib singleton, not a service |
@@ -201,13 +216,15 @@ them would then depend on. The measured cost is that the two request-building
 bodies are the two uncovered blocks in the codebase (TD-9 in
 **code-quality-assessment.md**).
 
-### The one accidental dependency
+### The one accidental dependency — now resolved
 
-`app/dummy_client.py` owns `_WORD = re.compile(r"[a-z']+")` (`app/dummy_client.py:68`),
-the only tokenizer in the repository, and it is underscore-private in an engine
-module. Any second consumer of that tokenizer either reaches into another
-module's private name or duplicates the regex (TD-6 in
-**code-quality-assessment.md**).
+The tokeniser used to be an accident: `_WORD = re.compile(r"[a-z']+")` lived
+underscore-private inside `app/dummy_client.py`. It is now the leaf
+`app/terms.py` (`tokenize`), consumed by both `app.dummy_client` and
+`app.analytics` (A4), so a second consumer no longer has to reach into an
+unrelated module's private name. TD-6 in **code-quality-assessment.md** is
+closed. The remaining deliberate duplication is the two `urllib` request bodies
+above, which is where the accident's fingerprint still shows.
 
 ---
 
@@ -219,8 +236,8 @@ module's private name or duplicates the regex (TD-6 in
 | Transitive surface | 12 packages, none imported by application code |
 | Acyclicity | Clean. No exceptions |
 | Cycles as a risk | None. The layering is stable at this size |
-| Fan-in concentration | Two leaves at 4 importers each (`sentiment`, `models`). Both are deliberately small, immutable and heavily depended upon — the right shape for contracts |
-| Fan-out concentration | `routes.py` at 7 and `service.py` at 6. Both are assembly points by role, so this is expected rather than a smell |
+| Fan-in concentration | `sentiment` and `models` at 5 importers each, `terms` at 2. All are deliberately small and heavily depended upon — the right shape for contracts |
+| Fan-out concentration | `routes.py` at 8 and `service.py` at 6. Both are assembly points by role, so this is expected rather than a smell |
 | Coupling hotspots | `routes.py` size and the two `urllib` duplicates. Both noted above |
 | Version pinning | **Floors only.** No lockfile, no hashes. The main supply-chain gap |
 | Update ownership | Unassigned. No remote, no bot, no audit cadence |

@@ -12,7 +12,18 @@ The domain has no user accounts, no multi-tenancy, no billing and no hosting.
 It is a **single-operator, localhost-only tool**: one process bound to
 `127.0.0.1`, one unauthenticated page, one SQLite file on the operator's own
 machine. The "business" is the operator's own workflow — try text, see the
-verdict, keep the history, occasionally load a batch from CSV.
+verdict, keep the history, occasionally load a batch from CSV, and (since
+`261001-analytics-layer`) read aggregates over that history.
+
+A second, read-only face has grown beside classification: an **analytics read
+layer** answering "what happened in this date range" (a per-range summary:
+totals, per-label counts, shares, a zero-filled per-day series) and "which terms
+led" (ranked significant terms per polarity). It computes entirely in-process
+from the stored rows, never calls a sentiment engine, and opens no outbound
+socket. The server half is complete and heavily tested; the **view half is a
+scaffold** — the page carries the nav and the summary region, but the terms
+section is a static placeholder and there is no date-range control yet (this is
+the gap the active intent `261004-analytics-view-packaging` fills).
 
 ## Purpose
 
@@ -30,6 +41,11 @@ Three purposes, in priority order, each traceable to code that already exists:
    from CSV and exportable back to CSV, so the operator can inspect or move
    their own data at any time. No retention or deletion policy exists because
    deleting the SQLite file is the accepted recovery.
+4. **Report over the kept decisions.** A read-only `/v2` analytics surface
+   aggregates the stored rows over a resolved date range (and optionally one
+   `import_id`), so the operator can see volume, polarity and leading terms
+   without exporting and counting by hand. It is additive: `/v1` is frozen and
+   the analytics paths perform no write.
 
 ## Operating Context
 
@@ -40,7 +56,7 @@ Three purposes, in priority order, each traceable to code that already exists:
 | Scale | Local single-user volume. One SQLite file, per-request connections, no pooling, no cache layer. | `app/routes.py:92-98`, `app/db.py:130-142` |
 | Data sensitivity | Submitted text is stored unencrypted and, in live mode, sent to OpenRouter. The API key lives only in the gitignored `config.local.toml` or process memory. | `app/repository.py:30-38`; project rule on credentials |
 | Availability target | None stated. No SLO, no monitoring, no alerting, no incident process. | absence across `app/`; no `docs/`, no CI |
-| Failure posture | Fail loudly at startup on a bad config or an unpreservable migration; fail with a typed envelope at request time; never store a fabricated label. | `app/config.py:52-58`, `app/db.py:145-168`, `app/sentiment.py:57-70` |
+| Failure posture | Fail loudly at startup on a bad config or an unpreservable migration; fail with a typed envelope at request time; never store a fabricated label. A store read error on `/v2` is answered `500 STORAGE_FAILURE`, never a fabricated empty aggregate. | `app/config.py:52-58`, `app/db.py:145-168`, `app/sentiment.py:57-70`, `app/routes.py:339-403` |
 
 ## Key Functionality
 
@@ -51,8 +67,9 @@ Three purposes, in priority order, each traceable to code that already exists:
 | F3 | Bulk-load a CSV | `POST /v1/analyses/import` | One text per row; an exact `text` first row is a header. Blank and unanalyzable rows are skipped, never aborting the request. Returns counts, a per-label breakdown and mean confidence. |
 | F4 | Export one import back to CSV | `GET /v1/analyses/export?import_id=` | Strictly scoped to the grouping key, so single-analysis rows are never included. An unknown id is a `404`, not an empty file. |
 | F5 | Report engine and connection state | `GET /v1/health`, `GET /auth/status` | Both read one function, so they cannot disagree. `reason` appears only when not connected, so the payload can never name a live engine and a disconnection at once. |
-| F6 | Serve the single page | `GET /` + `GET /static/*` | One hand-written HTML file with inline CSS plus one vanilla script. Four `fetch` call sites, all to `/v1` or `/auth/*`. |
+| F6 | Serve the single page | `GET /` + `GET /static/*` | One hand-written HTML file with inline CSS plus one vanilla script. The page now carries a three-link nav (`nav-summary`, `nav-terms`) and an analytics summary region; the terms section is a **static placeholder** and there is no date-range control. `fetch` call sites reach `/v1`, `/v2` and `/auth/*`. |
 | F7 | Connect to OpenRouter in-app | `/auth/openrouter/start`, `/auth/callback`, `POST /auth/disconnect` | PKCE (S256). The exchanged key is held in process memory for the session only and is never written to any file. |
+| F8 | Read aggregates over history | `GET /v2/analytics/summary`, `GET /v2/analytics/terms` | Read-only and additive (`BR4.7`). Both accept `from`/`to` (inclusive ISO dates) and `import_id`; the terms endpoint also takes `limit`. Both share one `resolve_range`, so they describe one population. The **server half is complete; only the page wiring (terms fetch, range control, partial-failure marker, superseded-response guard) is missing.** |
 
 Full endpoint reference, request/response shapes and the status-code matrix are
 in **api-documentation.md**. Component-by-component responsibility is in
@@ -74,6 +91,8 @@ the README, the table DDL and the tests.
 | **Import** | One bulk-import request. Its server-minted `import_id` (a `uuid4` hex) is written on every row it persists, and is `NULL` on every single-analysis row. |
 | **Effective connection** | The single payload describing which engine is actually in use right now, plus why not, when not. |
 | **Mode** | What the config *intends*: `offline`, or `live` even when no usable key exists. Intent and reality are deliberately separate fields. |
+| **Resolved range** | The inclusive UTC day window (`from`/`to`) plus optional `import_id` that the two `/v2` queries run against, produced by one shared `resolve_range` so the summary and the terms populations cannot disagree. An absent bound is unbounded; a range with no rows is a normal empty result, never an error. |
+| **Significant term** | A token that survives `app.terms.significant_terms`: length ≥ `MIN_TERM_LENGTH` (3) and not in `STOPWORDS`, matched case-insensitively. Counting, ranking and trimming to `limit` belong to `app.analytics`, not to `app.terms`. |
 
 ## Business Rules of Record
 
@@ -100,9 +119,10 @@ own statement, not as a code index.
 
 **HTTP boundary**
 - BR4.1 Empty or whitespace-only text is invalid input and is rejected before the engine is resolved; no row is written.
-- BR4.2 Data routes are versioned under `/v1`. Page, asset and `/auth/*` routes are unversioned because they carry no data contract.
+- BR4.2 Data routes are versioned. `/v1` is the frozen classification contract; the additive analytics read contract lives under `/v2` (`BR4.7`). Page, asset and `/auth/*` routes are unversioned because they carry no data contract.
 - BR4.3 Every failure the application code raises uses **one envelope, exactly `{code, message}`** — no field array, because the contract sets `additionalProperties: false`. Framework-generated routing errors keep FastAPI's own `{"detail": …}` shape.
 - BR4.4 The health payload carries mode and connected, plus a reason only when not connected.
+- BR4.7 The `/v2` analytics endpoints are **read-only and additive**: they never write, never call a sentiment engine, and never change a `/v1` response. A store read error is `500 STORAGE_FAILURE`; a bad or inverted range is `422 VALIDATION_FAILED`.
 
 **Session authorization**
 - BR6.1 The in-app key lives in process memory only. A restart starts disconnected.
@@ -120,7 +140,7 @@ these look available and are not.
 | Retention / deletion | Absent. | There is no delete path at all — not a route, not a retention job. |
 | Multi-user auth, accounts, roles | Absent by design and affirmed as a project rule (localhost-only, unauthenticated). | Any reachable process can spend the operator's key. |
 | Caching, rate limiting, circuit breakers | Absent. | Nothing to protect: no shared bottleneck exists at local scale. |
-| Pagination-independent reporting / analytics | **Absent.** Every read is a row fetch, newest-first. There is no aggregate query anywhere in the codebase and no query other than `SELECT *`-shaped row reads plus the `import_id` filter. | This is the gap the active intent fills. The natural home for aggregate SQL is a single module — see **architecture.md** §Extension Seams. |
+| Pagination-independent reporting / analytics | **Server half present since `261001-analytics-layer`; view half a scaffold.** `app/analytics.py` owns the aggregate reads behind `GET /v2/analytics/summary` and `GET /v2/analytics/terms`; `/v1` itself is still row-fetch only. The page's terms section is a static placeholder and no date-range control exists. | The server answers both questions over one shared resolved range; the remaining gap is the page wiring — the active intent `261004-analytics-view-packaging` — see **code-quality-assessment.md** TD-12. |
 
 ## Domain Invariants Worth Protecting
 
@@ -129,3 +149,4 @@ these look available and are not.
 3. **Migration never loses a row.** A migration that cannot preserve every row raises and rolls back rather than discarding data.
 4. **One envelope for application errors.** No second error shape exists inside the application.
 5. **The key never leaves process memory or the gitignored config file.**
+6. **Analytics reads never write and never call an engine.** `app/analytics.py` and `app/terms.py` contain no write, no DDL, no socket and no credential, and `resolve_range`/`read_summary`/`read_terms` take the request's connection rather than opening one.

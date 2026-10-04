@@ -133,6 +133,76 @@
         font-style: italic;
         opacity: 0.85;
       }
+      /* The shared date-range control (FR1.3): native date inputs, labelled,
+         defaulting to empty for all history. */
+      .analytics-range {
+        margin: 1.5rem 0 0.5rem;
+      }
+      .analytics-range h2 {
+        margin-bottom: 0.25rem;
+      }
+      .range-fields {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+        margin: 0;
+      }
+      .range-fields p {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        margin: 0;
+      }
+      .range-hint {
+        margin: 0.25rem 0 0;
+        font-size: 0.9rem;
+        opacity: 0.85;
+      }
+      #range-status {
+        margin: 0.25rem 0 0;
+        font-size: 0.9rem;
+      }
+      /* The two ranked term lists (FR1.2). */
+      .terms-lists {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem 2.5rem;
+        margin-top: 0.5rem;
+      }
+      .term-group {
+        flex: 1 1 12rem;
+      }
+      .term-group h3 {
+        margin: 0 0 0.25rem;
+      }
+      .term-list {
+        margin: 0;
+        padding-left: 1.25rem;
+      }
+      .term-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .term-count {
+        font-variant-numeric: tabular-nums;
+        opacity: 0.85;
+      }
+      /* A partial-failure marker names the section that failed while the other
+         section still renders its data (NFR4.6, FR1.10). */
+      .partial-failure {
+        margin: 0.5rem 0;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid currentColor;
+        border-radius: 6px;
+      }
+      .inline-error {
+        margin: 0.5rem 0;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #b00020;
+        border-radius: 6px;
+        color: #b00020;
+      }
       section[data-testid="analytics-empty"],
       section[data-testid="analytics-error"] {
         margin: 1rem 0;
@@ -261,17 +331,50 @@
         ></ul>
       </section>
 
+      <!-- The date-range control drives both `/v2` reads, so the summary and the
+           term lists always describe one population (FR1.3, FR1.4). Both bounds
+           default to empty — all history, no bounds — and the filter is a pair
+           of native date inputs. -->
+      <form
+        data-testid="analytics-range"
+        id="analytics-range"
+        class="analytics-range"
+        aria-labelledby="analytics-range-heading"
+      >
+        <h2 id="analytics-range-heading">Date range</h2>
+        <div class="range-fields">
+          <p>
+            <label for="range-from">From</label>
+            <input data-testid="range-from" id="range-from" name="from" type="date" />
+          </p>
+          <p>
+            <label for="range-to">To</label>
+            <input data-testid="range-to" id="range-to" name="to" type="date" />
+          </p>
+        </div>
+        <p class="range-hint">Leave both empty for all history. UTC calendar days, inclusive.</p>
+        <p data-testid="range-status" id="range-status" role="status" aria-live="polite">
+          Showing all history.
+        </p>
+      </form>
+
       <!-- The summary region of the analytics view. Every figure below is written
            from a value the /v2 endpoint returned and nothing else: a null share
            becomes an explicit no-share marker, never a fabricated 0%
-           (FR6.2, FR2.7, AC6.2.5). The term-list containers and the range control
-           are a later change (AC6.2.1's other half, AC6.3.1-AC6.3.4). -->
+           (FR6.2, FR2.7, AC6.2.5). -->
       <section
         data-testid="analytics-summary"
         id="analytics-summary"
         aria-labelledby="analytics-summary-heading"
       >
         <h2 id="analytics-summary-heading">Summary</h2>
+        <p
+          data-testid="summary-partial"
+          id="summary-partial"
+          class="partial-failure"
+          role="status"
+          hidden
+        ></p>
 
         <div class="summary-figures">
           <p>
@@ -323,11 +426,31 @@
         hidden
       ></section>
 
-      <!-- The two term-list containers land with the range control; this unit
-           completes the summary path end to end (US6.2, slice half). -->
+      <!-- The two ranked term lists for the current range, top 10 per list with
+           each term's count (FR1.1, FR1.2). The empty and error regions are
+           distinct, and the partial-failure marker names a section that failed
+           while the other still rendered (FR1.7, FR1.10, NFR4.6). -->
       <section id="terms-section" aria-labelledby="terms-heading">
         <h2 id="terms-heading">Terms</h2>
-        <p>The ranked term lists for the current range appear here.</p>
+        <p
+          data-testid="terms-partial"
+          id="terms-partial"
+          class="partial-failure"
+          role="status"
+          hidden
+        ></p>
+        <div class="terms-lists">
+          <div class="term-group">
+            <h3>Positive</h3>
+            <ol class="term-list" data-testid="terms-positive" id="terms-positive"></ol>
+          </div>
+          <div class="term-group">
+            <h3>Negative</h3>
+            <ol class="term-list" data-testid="terms-negative" id="terms-negative"></ol>
+          </div>
+        </div>
+        <p data-testid="terms-empty" id="terms-empty" hidden>No terms in this range yet.</p>
+        <p data-testid="terms-error" id="terms-error" class="inline-error" role="alert" hidden></p>
       </section>
 
       <section aria-labelledby="history-heading">

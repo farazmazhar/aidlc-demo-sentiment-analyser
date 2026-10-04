@@ -1,0 +1,15 @@
+{
+  "stage": "code-generation",
+  "version": 1,
+  "writes": [
+    { "path": "Makefile" },
+    { "path": "LICENSE" },
+    { "path": "requirements.lock" },
+    { "path": ".secrets.baseline" },
+    { "path": "pyproject.toml" },
+    { "path": "README.md" },
+    { "path": "app/static/index.html" },
+    { "path": "app/static/app.js" },
+    { "path": "tests/test_page.py" }
+  ]
+}

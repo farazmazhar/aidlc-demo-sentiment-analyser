@@ -38,10 +38,22 @@ python -m pip install -e ".[dev]"
 Runtime dependencies are exactly two: `fastapi` and `uvicorn`. Everything else
 is the standard library — storage is the standard library's `sqlite3` and the
 one outbound HTTP call uses the standard library too. The development extra adds
-three packages: `pytest` (the test runner), `pytest-cov` (the coverage plugin
-that applies the 80% line floor over `app/`) and `ruff` (formatting and linting,
+the tooling: `pytest` (the test runner), `pytest-cov` (the coverage plugin that
+applies the 80% line floor over `app/`), `ruff` (formatting and linting,
 configured in `pyproject.toml` with an explicit rule set that includes the `S`
-security rules).
+security rules and the `TID251` layer-boundary rules), `detect-secrets` (the
+secret scan, FR2.2), `pip-audit` (the dependency audit, FR2.3) and `uv` (the
+generator of the hashed lockfile, FR2.4).
+
+A hashed lockfile, `requirements.lock`, is committed so an install resolves the
+same set on every host. To install exactly what it pins:
+
+```bash
+python -m pip install --require-hashes -r requirements.lock
+python -m pip install -e . --no-deps
+```
+
+Regenerate it with `make lock` (needs network).
 
 ## Run it
 
@@ -64,14 +76,36 @@ live region, so colour is never the only signal. Clicking it connects or
 disconnects.
 
 The header also carries a three-link nav — **Analyse**, **Summary**, **Terms** —
-with `aria-current` on the active section. **Summary** and **Terms** read the
-`/v2` analytics endpoints and render the result: totals, mean confidence, a
-per-day series drawn as an SVG polyline with the values also present as text, and
-a per-label breakdown with shares, in separate regions for "nothing matched" and
-for a failed fetch. Every value reaches the DOM through `textContent`, so no
-stored text is ever parsed as markup.
+with `aria-current` on the active section. A shared **date-range control** (two
+labelled, native date inputs) drives the analytics view; both bounds default to
+empty, which means all history with no bounds, and changing either bound
+refetches both `/v2` endpoints with the same bounds so the two sections always
+describe one population. The page sends no `import_id` filter — that stays
+API-only.
+
+**Summary** and **Terms** read the `/v2` analytics endpoints and render the
+result: totals, mean confidence, a per-day series drawn as an SVG polyline with
+the values also present as text, a per-label breakdown with shares, and the top
+10 positive and negative terms with their counts. Empty, failed and
+partial-failure states are distinct regions: if one section fails, the other
+still renders its data and the failed section shows a partial-failure marker.
+A range change supersedes any in-flight request (an `AbortController` plus a
+request token), so a late response from an earlier range can never overwrite a
+newer one, and the view never re-sends a failed request on its own. Every value
+reaches the DOM through `textContent`, so no stored text is ever parsed as
+markup.
 
 ## Test it, lint it
+
+`make verify` runs every standing gate, in order — install, lint, format check,
+the whole suite with its coverage floor, the secret scan and the dependency
+audit:
+
+```bash
+make verify                               # the whole gate, end to end
+```
+
+Or run the individual gates:
 
 ```bash
 python -m pytest -q                       # the whole suite, with the coverage floor
@@ -92,6 +126,14 @@ transport instead.
 `tests/test_page.py` verifies the page at the served-markup level; browser-side
 execution of `app.js` is not driven by the suite, because no browser-automation
 dependency is permitted under the dependency cap.
+
+Two security instruments run as part of `make verify`. The **secret scan** uses
+`detect-secrets` against the committed `.secrets.baseline`; the baseline records
+the repository's fake-key fixtures (the six test files that hold `sk-or-v1-*`
+placeholders and the `README`'s example) as reviewed findings, so a genuinely new
+secret still fails the target. The **dependency audit** uses `pip-audit` against
+`requirements.lock`. Neither is a pre-commit hook or a CI job: there is no
+remote, so the `Makefile` is the gate.
 
 ## Connecting to OpenRouter from the app
 
@@ -206,7 +248,7 @@ are unversioned because they carry no data contract.
 
 | Route | Behaviour |
 |---|---|
-| `GET /` | the page: submit form, result panel, history, connection indicator |
+| `GET /` | the page: submit form, result panel, history, connection indicator, and the analytics view (date-range control, summary, term lists) |
 | `POST /v1/analyze` | `{"text": "..."}` → `200` with the stored record |
 | `POST /v1/analyze` with a field the body does not declare | `422 VALIDATION_FAILED`, nothing stored |
 | `POST /v1/analyze` with empty or whitespace-only text | `422 INVALID_TEXT`, nothing stored |
@@ -274,7 +316,11 @@ Framework-generated errors (an unknown path, a wrong method) keep FastAPI's own
 
 ```
 .
+├── Makefile                  # `make verify`: install, lint, format, test, secret scan, audit
 ├── pyproject.toml            # metadata, dependencies, pytest/coverage/ruff configuration
+├── requirements.lock         # hashed lockfile; the reproducible install set
+├── .secrets.baseline         # detect-secrets allowlist (the fake-key fixtures)
+├── LICENSE                   # MIT
 ├── config.example.toml       # committed placeholder configuration
 ├── config.local.toml         # gitignored; your key and mode
 ├── app/
@@ -293,14 +339,14 @@ Framework-generated errors (an unknown path, a wrong method) keep FastAPI's own
 │   ├── service.py            # analyze_text(), import_texts(), get_client(), effective_connection()
 │   ├── routes.py             # the page, the `/v1` API, the `/v2` analytics API, the auth routes
 │   └── static/
-│       ├── index.html        # header, nav, the analyse / summary / terms sections
-│       └── app.js            # `/v1` + `/v2` fetch calls, rendering, history, indicator
+│       ├── index.html        # header, nav, range control, analyse / summary / terms sections
+│       └── app.js            # `/v1` + `/v2` fetch calls, rendering, range, supersede guard
 └── tests/
     ├── conftest.py           # ASGI harness, concurrency helper, offline guard, tmp settings
     ├── test_db.py            ├── test_repository.py
     ├── test_config.py        ├── test_dummy_client.py
     ├── test_live_client.py   ├── test_service.py
-    ├── test_routes.py        ├── test_page.py
+    ├── test_routes.py        ├── test_page.py   # served markup + the analytics view contract
     ├── test_bulk_import.py   ├── test_session_auth.py
     ├── test_auth_routes.py
     ├── test_analytics_read.py    # range resolution, aggregates, ranking, latency budget
@@ -348,11 +394,20 @@ Framework-generated errors (an unknown path, a wrong method) keep FastAPI's own
 ## Verify it end to end
 
 ```bash
+make verify
+```
+
+That runs the whole standing gate in order — install, `ruff check`, `ruff format
+--check`, `pytest` with the 80% coverage floor, the `detect-secrets` scan and the
+`pip-audit` dependency audit. To also boot the app and exercise the changed path
+over real HTTP (the manual end-to-end step), run the one-liner below: it installs,
+runs the suite, then boots the app on loopback and reads its health payload.
+
+```bash
 python -m pip install -e ".[dev]" && python -m pytest -q && python -c "import threading,time,urllib.request,uvicorn; from app.main import app as a; threading.Thread(target=uvicorn.run, args=(a,), kwargs={'host':'127.0.0.1','port':8141,'log_level':'warning'}, daemon=True).start(); time.sleep(2); print(urllib.request.urlopen('http://127.0.0.1:8141/v1/health').read().decode())"
 ```
 
-That installs, runs the suite with the coverage floor applied, then boots the
-app on loopback and reads its health payload. It prints, for a fresh checkout:
+It prints, for a fresh checkout:
 
 ```json
 {"mode": "offline", "connected": false, "reason": "Not connected to OpenRouter."}

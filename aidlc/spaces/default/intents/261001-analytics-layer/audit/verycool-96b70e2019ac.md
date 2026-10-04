@@ -29054,3 +29054,159 @@
 **Session**: ses_f075f579cffeY1AuKi93ORtbeq
 
 ---
+
+## Stage Jump
+**Timestamp**: 2026-10-04T11:59:15Z
+**Event**: STAGE_JUMPED
+**Direction**: REDO
+**Source**: code-generation
+**Target**: code-generation
+**Scope**: feature
+**Details**: REDO jump from code-generation to code-generation (3.5). Scope: feature.
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Stage Start
+**Timestamp**: 2026-10-04T11:59:15Z
+**Event**: STAGE_STARTED
+**Stage**: code-generation
+**Agent**: aidlc-developer-agent
+**Source Baseline**: sha256:d90e39f3405f28767d43e04a1c0a1e305e7d11374a2aee828d6820c34c31f8c1
+
+---
+
+## Review Requested
+**Timestamp**: 2026-10-04T11:59:44Z
+**Event**: REVIEW_REQUESTED
+**Stage**: code-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Request Id**: review:9e1769e5498e0b78eff5ec7795f9f418
+**Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Unit Source Fingerprint**: sha256:520b24a3e1e3a0213c6e23f3701a89d3483bcb5709eb3a6c77fc85672de9d4f4
+
+---
+
+## Review Completed
+**Timestamp**: 2026-10-04T11:59:51Z
+**Event**: REVIEW_COMPLETED
+**Stage**: code-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Verdict**: READY
+**Request Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Artifact Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Request Id**: review:9e1769e5498e0b78eff5ec7795f9f418
+**Request Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Source Fingerprint**: b9231a41a9518999c02b00c23d81879362b16eceee2a12e6c20f65ec377f87e7
+**Unit Source Fingerprint**: sha256:520b24a3e1e3a0213c6e23f3701a89d3483bcb5709eb3a6c77fc85672de9d4f4
+**Review Record**: .aidlc-engine/reviews/code-generation/units/u2-term-extraction/495d5a70ae2c432d/1.json
+**Review Record Digest**: sha256:b7a15ca42c7a46d9ddd4eb85bb2a2ce9d97b93d33dd5500fff76bc6bc6dd492d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T12:00:45Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T12:01:20Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Gate Rejected
+**Timestamp**: 2026-10-04T12:01:33Z
+**Event**: GATE_REJECTED
+**Stage**: code-generation
+**Unit**: u2-term-extraction
+**Gate Scope**: per-stage
+**Gate Stages**: code-generation
+**Feedback**: Nothing — the review receipt is recorded and the Unit receipt is next
+
+---
+
+## Stage Revising
+**Timestamp**: 2026-10-04T12:01:33Z
+**Event**: STAGE_REVISING
+**Stage**: code-generation
+**Unit**: u2-term-extraction
+**Gate Scope**: per-stage
+**Gate Stages**: code-generation
+**Revision count**: 3
+**Feedback**: Nothing — the review receipt is recorded and the Unit receipt is next
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T12:01:33Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit start --stage code-generation --unit u2-term-extraction
+**Error**: Refusing to start unit "u2-term-extraction" for "code-generation": the engine currently routes a ask directive. Run the exact directive.stage/directive.unit pair returned by aidlc-orchestrate.ts next.
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T12:01:33Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit complete --stage code-generation --unit u2-term-extraction
+**Error**: Refusing to complete unit "u2-term-extraction" for "code-generation": it is not the active unit (no unit is active — start it first).
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T12:03:00Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T12:03:17Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit --help
+**Error**: Usage: aidlc-state.ts unit <start|pause|resume|complete> --stage <slug> --unit <name> [--reason <text>] [--next-action <text>] [--wave]
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T12:03:18Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit pause --stage code-generation --unit u2-term-extraction --reason Unit receipt unreachable: STAGE_JUMPED invalidates the review receipt while the recovery ask blocks unit start --next-action Resume with unit resume, or let a later attempt record the completion receipt
+**Error**: Refusing to pause unit "u2-term-extraction" for "code-generation": it is not the active unit (no unit is active — start it first).
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T12:05:09Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Session Start
+**Timestamp**: 2026-10-04T12:08:59Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: ses_ef92ebfa1ffeQglmJ819Wk1IEr
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T12:08:59Z
+**Event**: HUMAN_TURN
+**Session**: ses_ef92ebfa1ffeQglmJ819Wk1IEr
+
+---

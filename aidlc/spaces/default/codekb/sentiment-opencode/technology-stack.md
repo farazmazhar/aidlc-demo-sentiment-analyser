@@ -4,8 +4,8 @@
 
 | Language | Version | Where | Notes |
 |---|---|---|---|
-| **Python** | `>=3.11` declared (`pyproject.toml:10`); **3.14.7** installed and used to measure the suite | All 12 `app/` modules, all 12 `tests/` modules, build and tool config | `target-version = "py311"` for `ruff`, so the code stays 3.11-compatible. Uses `from __future__ import annotations` in all 12 modules |
-| **JavaScript** | ES2020-era, no transpile | `app/static/app.js` (201 lines) | Vanilla, no module syntax, no bundler, no `package.json`. Runs as the browser loads it |
+| **Python** | `>=3.11` declared; **3.14.7** installed and used to measure the suite | All 14 `app/` modules, all 15 `tests/` modules, build and tool config | `target-version = "py311"` for `ruff`, so the code stays 3.11-compatible. Uses `from __future__ import annotations` in 13 of 14 `app/` modules (the exception is the 10-line `app/__init__.py`) |
+| **JavaScript** | ES2020-era, no transpile | `app/static/app.js` (322 lines) | Vanilla, no module syntax, no bundler, no `package.json`. Runs as the browser loads it |
 | **CSS** | — | Inline `<style>` in `app/static/index.html` | One `:root` custom-property block plus class rules. No preprocessor, no external stylesheet |
 | **HTML** | — | `app/static/index.html` | One document, no partials, no client-side templating beyond one `<template>` element |
 | **TOML** | — | `pyproject.toml`, `config.example.toml` (read at runtime via stdlib `tomllib`) | The configuration format for both the build and the app |
@@ -54,7 +54,7 @@ code.
 | h11 | 0.16.0 | uvicorn | HTTP/1.1 protocol implementation |
 | idna | 3.20 | anyio | IDNA host encoding |
 | annotated-doc | 0.0.5 | fastapi | documentation typing |
-| opentelemetry-api | 1.45.1 | anyio | tracing hooks; unused by this app |
+| opentelemetry-api | 1.45.0 | fastapi (a hard, non-extra dependency) | tracing hooks; nothing in `app/` imports it and no SDK/exporter is installed, so it is an unused transitive |
 | typing_extensions | 4.16.0 | pydantic / fastapi | typing backports |
 | typing-inspection | 0.4.4 | pydantic | typing introspection |
 
@@ -89,10 +89,12 @@ Everything else is stdlib. This is the substance of the two-package cap.
 | `tomllib` | Parsing `config.local.toml` | `app/config.py:24` |
 | `csv` + `io` | Bulk import parsing and export writing | `app/routes.py:17-18` |
 | `uuid` | Minting `import_id` | `app/service.py:15` |
-| `datetime` + `timezone` (`datetime.UTC`) | UTC timestamps; no `zoneinfo` and no local-time dependency | `app/repository.py`, `app/session_auth.py` |
+| `datetime` + `timezone` (`datetime.UTC`) | UTC timestamps and the resolved per-day range; no `zoneinfo` and no local-time dependency | `app/repository.py`, `app/session_auth.py`, `app/analytics.py` |
+| `decimal` (`Decimal`, `ROUND_HALF_UP`) | Rounding analytics shares and means deterministically | `app/analytics.py` |
+| `collections.Counter` | Term-frequency counting for the `/v2` terms endpoint | `app/analytics.py` |
 | `secrets`, `hashlib`, `base64` | PKCE verifier and S256 challenge | `app/session_auth.py` |
 | `threading` | Locking the session credential and pending-verifier map | `app/session_auth.py:30` |
-| `re` | The tokenizer `_WORD` — the only tokenizer in the repo | `app/dummy_client.py:68` |
+| `re` | The one tokeniser's word pattern, and the analytics date-bound pattern | `app/terms.py`, `app/analytics.py` |
 | `json` | Serialising `probabilities` on write, decoding on read | `app/models.py`, `app/repository.py` |
 | `logging` | Module loggers; `print()` never appears in `app/` | `app/main.py`, `app/routes.py`, `app/config.py` |
 | `dataclasses` | All request/record/config types | throughout |
@@ -108,8 +110,8 @@ Everything else is stdlib. This is the substance of the two-package cap.
 | File | `data/sentiment.db`, created on demand (parent directory created automatically) |
 | Row factory | `sqlite3.Row`, mapped to `AnalysisRecord` by `AnalysisRecord.from_row` |
 | Pragma | `PRAGMA foreign_keys = ON` on every connection |
-| Schema version | 3, recorded in `schema_meta(key, value)` and written on every `init_db` |
-| Concurrency | One short-lived connection per request; no pooling; default thread affinity |
+| Schema version | 4, recorded in `schema_meta(key, value)` and written on every `init_db`; three named indexes on `analyses` |
+| Concurrency | One short-lived connection per request, opened `check_same_thread=False`; no pooling. The request-scoped invariant is documented in `app/db.py` and the suite carries `concurrent_requests` |
 | Backup / replication / HA | **None.** Deleting the file is the accepted recovery |
 
 ### Verified SQLite capabilities relevant to analytics work
@@ -123,7 +125,7 @@ needed for aggregate work:
 | `strftime('%Y-%m-%d', <ts>)` | yes — works directly on the stored ISO-8601-Z string |
 | `CHECK` constraint enforcement | yes — the `label` domain is enforced by the DDL |
 | `ALTER TABLE … ADD COLUMN` | yes — used by the migration |
-| Window functions / `GROUP BY` aggregate | available in 3.53.4 (not exercised by current code) |
+| Window functions / `GROUP BY` aggregate | available in 3.53.4; `GROUP BY` is now exercised by the `/v2` summary |
 
 The stored `created_at` encoding (ISO 8601 UTC ending in `Z`) means a date range
 filter is a plain string comparison — lexicographic order equals chronological
@@ -167,10 +169,10 @@ Independently re-measured during this synthesis, not carried over from the scan.
 
 | Measure | Value |
 |---|---|
-| Tests | **118 passed**, 0 failed, 0 skipped, in ~0.7 s |
-| Line coverage over `app/` | **96.02%** — 679 statements, 27 missed — against the 80% floor |
+| Tests | **192 passed**, 0 failed, 0 skipped |
+| Line coverage over `app/` | **97.06%** — 884 statements, 26 missed — against the 80% floor |
 | `ruff check app tests` | *All checks passed!* |
-| `ruff format --check app tests` | *24 files already formatted* |
+| `ruff format --check app tests` | *30 files already formatted* |
 | Interpreter used | CPython 3.14.7 on linux |
 
 Per-module coverage detail and the full debt register are in
@@ -188,7 +190,9 @@ There is no audit command, no update bot, and no automatic patch path. The
 mitigating property is the small surface: two direct runtime dependencies, one of
 which (`uvicorn`) is the only one that parses untrusted input, and the
 dependency cap keeps that surface from growing without an explicit requirement
-change.
+change. There is also **no secret scanner and no dependency audit** today, and no
+lockfile; adding the scanners (with the fake-key test fixtures allowlisted) and a
+hashed lockfile is the active intent's packaging half.
 
 The full dependency adjacency — including the internal module-level import graph
 and its acyclicity — is in **dependencies.md**.
