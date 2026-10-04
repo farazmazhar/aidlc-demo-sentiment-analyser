@@ -194,4 +194,8 @@ def significant_terms(tokens: Sequence[str]) -> list[str]:
     has tokens passes them straight through, so the filters cannot be applied
     twice (`FR4.4`).
     """
-    return [token for token in tokens if len(token) >= MIN_TERM_LENGTH and token not in STOPWORDS]
+    return [
+        token
+        for token in tokens
+        if len(token) >= MIN_TERM_LENGTH and token.lower() not in STOPWORDS
+    ]
