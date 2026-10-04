@@ -2,7 +2,7 @@
 
 Every AI-DLC intent that has run in this repository, and what each one left behind.
 
-Four intents, four distinct scopes, all `complete`. Read from
+Five intents, four distinct scopes, all `complete`. Read from
 `aidlc/spaces/default/intents/intents.json`; stage counts from each intent's
 `aidlc-state.md`.
 
@@ -12,6 +12,7 @@ Four intents, four distinct scopes, all `complete`. Read from
 | `sentiment-v1` | `classic` | 14 of 33 | `v1-classic` | `4eb9b74` |
 | `csv-bulk-import` | `express` | 9 of 33 | `express` | `beeb587` |
 | `analytics-layer` | `feature` | 26 of 33 | `feature` | `f3b5185` |
+| `analytics-view-packaging` | `express` | 10 of 33 | `express-2` | `bf49881` |
 
 **On the denominator.** 33 is the compiled stage-graph size, which every intent
 carries. The `feature` scope's own runtime summary reports **26 of 30** instead,
@@ -141,14 +142,55 @@ were deliberately left outside the release. `aa0b1e4` is where the code landed;
 
 ---
 
-## The pattern across all four
+## 5. `express` (second run) — analytics-view-packaging
+
+**Oct 4. 10 of 10 in-scope stages. Tagged `express-2` → `bf49881`.**
+
+The follow-on that finished the analytics layer. The `feature` scope shipped the
+`/v2` server but its unit walk wedged before the view and the packaging landed
+(see `ENGINE-DEFECT-REPORT.md`), so this intent re-ran the two remaining
+deliverables under the lighter `express` dial.
+
+Added the **analytics view wiring** — the terms section, the date-range control,
+the per-section partial-failure marker (`NFR4.6`) and the supersede / no-silent-retry
+guard (`NFR4.7`) — and the **platform packaging**: a `make verify` gate,
+`detect-secrets`, `pip-audit`, a hashed `requirements.lock`, an MIT `LICENSE`, and
+`ruff TID251` boundary rules.
+
+Measured: **198 tests passing, 97.06 % line coverage** against the 80 % floor,
+`make verify` green end to end, a 14/14 real-HTTP smoke run, and the operator's
+store byte-identical (sha256 and mtime). `/v1` untouched; runtime dependencies still
+exactly two.
+
+**Why `express-2` and not `express`.** The `express` tag already names the
+`csv-bulk-import` release, and a scope tag is a release name. Rather than force-move a
+published tag, this second `express` run carries `express-2`.
+
+**What it closed.** The two targets the `feature` scope left `Unverified` — `NFR4.6`
+and `NFR4.7` — now ship with static served-asset assertions plus the manual end-to-end
+step (no browser execution is admitted under the two-package cap). Of the three unbuilt
+`feature` units, `u3-analytics-view` and `u4-platform-packaging` land here as one
+stage-level iteration; `u2-term-extraction` had already been built by the prior intent.
+
+**Still open** (full detail in
+[`OUTCOMES-analytics-view-packaging.md`](OUTCOMES-analytics-view-packaging.md)): a git
+remote now exists (contrary to `team.md`'s "no remote"); the summary series width is
+unbounded; a `422` emits no application log line; the `uvicorn --host` bind bypass; log
+retention; and the accepted R-01 thread-affinity limitation.
+
+---
+
+## The pattern across all five
 
 **Each scope left the next one better-constrained.** The poc wrote the brief.
 `classic` turned it into a release and wrote the dependency cap and the offline
-guard. `express` added a surface and a migration. `feature` added a read path and
-a version prefix. Nothing in `analytics-layer` changed a `/v1` behaviour.
+guard. The first `express` run added a surface and a migration. `feature` added a
+read path and a version prefix. The second `express` run added the view wiring and
+the packaging instruments — the gate (`make verify`), the secret scan, the
+dependency audit and the lockfile. Nothing in `analytics-layer` or
+`analytics-view-packaging` changed a `/v1` behaviour.
 
-**Three of four carry a tag, and the fourth's absence is the record.** The
+**Four of five carry a tag, and the fifth's absence is the record.** The
 convention was affirmed on Sep 30, between the poc and `classic`.
 
 **Every scope's Open questions outlived it.** `team.md` and `project.md` now hold
@@ -160,5 +202,6 @@ still readable, lesson by lesson, in the order they were learned.
 `build-and-test` as their last recorded stage, and both are marked `complete`.
 That is the scope boundary working — those workflows never ran Operation phases —
 but it means the early intents have no incident-response, performance-validation
-or feedback record. Only `express` and `feature` reached Operation, and the
-findings that now shape how this app is documented all come from `feature`.
+or feedback record. Both `express` runs and `feature` reached Operation, and the
+findings that now shape how this app is documented all come from `feature` (with the
+second `express` run closing the two `Unverified` targets that scope left behind).

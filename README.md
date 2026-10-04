@@ -21,6 +21,9 @@ Project write-ups live in [`docs/`](docs/):
   what each one left behind
 - [`docs/OUTCOMES.md`](docs/OUTCOMES.md) — the handover pack for the analytics
   layer: what was built, how it was verified, and what is still open
+- [`docs/OUTCOMES-analytics-view-packaging.md`](docs/OUTCOMES-analytics-view-packaging.md)
+  — the handover pack for the follow-on that finished the analytics layer: the view
+  wiring, the platform packaging, and the `make verify` gate
 
 ## Prerequisites
 
