@@ -13,6 +13,39 @@
 
 ---
 
+## 0. Why this scope exists — the framework defect it routed around
+
+This intent exists to finish work the previous intent could not. The `feature`
+scope (`261001-analytics-layer`) shipped the `/v2` analytics server, but its
+per-Unit `code-generation` walk **wedged** in `u2-term-extraction` on an unreachable
+`UNIT_COMPLETED` receipt (`UNIT_COMPLETION_MISSING`), reproduced three times with no
+exit using the engine's own verbs.
+
+The loop is closed because the two remedies the engine offers are jointly
+unsatisfiable: `request-review` produces a recordable `REVIEW_COMPLETED`, but
+`unit start` is refused while a recovery `ask` holds routing — *"the engine currently
+routes a ask directive"* — and that ask re-arms on every `next`; the alternative, a
+redo-jump, emits `STAGE_JUMPED`, which invalidates every prior review receipt — so
+the jump destroys the receipt the Unit needs. Two contributing defects made it
+unfixable from inside the review: the dispatched reviewer's `write` is refused by the
+plan-approval guard (`CODE_GENERATION_EXECUTION_INELIGIBLE`, because the review file
+lives outside the stage record directory), and the permitted shell workaround changes
+the source fingerprint, so the verdict is then refused as *"source changed after
+REVIEW_REQUESTED"* — producing the review is what invalidates the review. A stale
+compiled `bolt_dag` compounded the routing.
+
+`u2-term-extraction` was complete in substance, but the walk will not advance past an
+unsettled Unit, so `u3-analytics-view` and `u4-platform-packaging` were **unreachable
+in that intent**. The engine's own recommendation was to route around it — start a
+fresh intent rather than continue one whose walk is wedged. **This scope is that
+fresh intent:** it re-ran the two remaining deliverables under the `express` dial and
+closed the two targets (`NFR4.6`, `NFR4.7`) the `feature` scope left `Unverified`.
+
+Full detail, the reproduction table and the recommendations are in
+[`../ENGINE-DEFECT-REPORT.md`](../ENGINE-DEFECT-REPORT.md).
+
+---
+
 ## 1. What Was Built
 
 This workflow finished the two remaining analytics-layer deliverables for

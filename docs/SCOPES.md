@@ -130,6 +130,39 @@ ruff clean, `/v1` untouched.
   by a writer lockout that takes 100 % of reads down for five seconds because
   `app/db.py:213` sets no `busy_timeout`.
 
+### Why three Units were never built — the framework went haywire
+
+The three unbuilt Units are **not** a scoping choice. The **engine wedged**: the
+per-Unit walk stopped in `u2-term-extraction`'s `code-generation` stage on an
+unreachable `UNIT_COMPLETED` receipt (`UNIT_COMPLETION_MISSING`), reproduced three
+times with no exit using the engine's own verbs.
+
+The loop is closed because the two remedies the engine offers are jointly
+unsatisfiable:
+
+- `request-review` produces a recordable `REVIEW_COMPLETED`, but `unit start` is
+  refused while a recovery `ask` holds routing — *"the engine currently routes a ask
+  directive"* — and that ask re-arms on the next `next`.
+- The other remedy, a redo-jump, emits `STAGE_JUMPED`, which invalidates every prior
+  review receipt — so the jump destroys the very receipt the Unit needs, and the walk
+  is back at `UNIT_COMPLETION_MISSING`.
+
+Two contributing defects made it unfixable from inside the review: the dispatched
+reviewer's `write` is refused by the plan-approval guard
+(`CODE_GENERATION_EXECUTION_INELIGIBLE`, because the review file lives outside the
+stage record directory), and the permitted shell workaround changes the source
+fingerprint, so the verdict is then refused as *"source changed after
+REVIEW_REQUESTED"* — **producing the review is what invalidates the review**. A
+stale compiled `bolt_dag` compounded the routing.
+
+`u2-term-extraction` was complete in substance — the module adopted, its defect
+fixed, the artifacts written, a `READY` review on disk — but the walk will not
+advance past an unsettled Unit, so `u3-analytics-view` and `u4-platform-packaging`
+were **unreachable in that intent**. The engine's own recommendation was to route
+around it: start a fresh intent rather than continue one whose walk is wedged.
+**§5 is that fresh intent.** Full detail, the reproduction table and the
+recommendations: [`../ENGINE-DEFECT-REPORT.md`](../ENGINE-DEFECT-REPORT.md).
+
 Full detail in [`OUTCOMES.md`](OUTCOMES.md) and the ranked backlog in
 `operation/feedback-optimization/feedback-loop.md`.
 
@@ -146,10 +179,14 @@ were deliberately left outside the release. `aa0b1e4` is where the code landed;
 
 **Oct 4. 10 of 10 in-scope stages. Tagged `express-2` → `bf49881`.**
 
-The follow-on that finished the analytics layer. The `feature` scope shipped the
-`/v2` server but its unit walk wedged before the view and the packaging landed
-(see `ENGINE-DEFECT-REPORT.md`), so this intent re-ran the two remaining
-deliverables under the lighter `express` dial.
+The follow-on that finished the analytics layer — and it was **required**, because
+the framework wedged the previous intent (§4, "Why three Units were never built —
+the framework went haywire"). The `feature` scope shipped the `/v2` server but its
+per-Unit walk reached an unreachable completion receipt before the view and the
+packaging landed, so `u3-analytics-view` and `u4-platform-packaging` could not be
+reached **in that intent**. The engine's own recommendation was to route around it
+with a fresh intent; this is that intent, re-running the two remaining deliverables
+under the lighter `express` dial.
 
 Added the **analytics view wiring** — the terms section, the date-range control,
 the per-section partial-failure marker (`NFR4.6`) and the supersede / no-silent-retry
