@@ -106,7 +106,7 @@
 ### CONSTRUCTION PHASE
 Per unit: [TBD]
 - [S] functional-design — EXECUTE
-- [-] nfr-requirements — EXECUTE
+- [S] nfr-requirements — EXECUTE
 - [S] nfr-design — EXECUTE
 - [S] infrastructure-design — EXECUTE
 - [-] code-generation — EXECUTE
@@ -124,19 +124,19 @@ Per unit: [TBD]
 
 ## Unit Progress
 <!-- Derived, engine-owned projection; routing ignores hand edits. -->
-| unit | owner | nfr-requirements | code-generation | gate |
-| --- | --- | --- | --- | --- |
-| u2-term-extraction | - | [x] | [?] | [?] |
-| u4-platform-packaging | - | [ ] | [ ] | [ ] |
-| u1-analytics-slice | - | [ ] | [?] | [?] |
-| u3-analytics-view | - | [ ] | [ ] | [ ] |
+| unit | owner | code-generation | gate |
+| --- | --- | --- | --- |
+| u2-term-extraction | - | [?] | [?] |
+| u4-platform-packaging | - | [ ] | [ ] |
+| u1-analytics-slice | - | [?] | [?] |
+| u3-analytics-view | - | [ ] | [ ] |
 
 ## Current Status
 - **Lifecycle Phase**: CONSTRUCTION
 - **Current Stage**: code-generation
 - **Next Stage**: build-and-test
 - **Status**: Running
-- **Last Updated**: 2026-10-04T11:16:47Z
+- **Last Updated**: 2026-10-04T11:24:19Z
 
 - **Construction Autonomy Mode**: autonomous
 

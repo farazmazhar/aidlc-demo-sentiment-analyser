@@ -28749,3 +28749,143 @@
 **Error**: Refusing REVIEW_COMPLETED for "code-generation": workspace source changed after REVIEW_REQUESTED iteration 1. Restore the requested source state and re-dispatch the reviewer.
 
 ---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:20:53Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage code-generation --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 1 --verdict READY --project-dir <project-dir>
+**Error**: Refusing REVIEW_COMPLETED for "code-generation": workspace source changed after REVIEW_REQUESTED iteration 1. Restore the requested source state and re-dispatch the reviewer.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:22:12Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:23:49Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:23:54Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit start --stage code-generation --unit u2-term-extraction
+**Error**: Refusing to start unit "u2-term-extraction" for "code-generation": the engine currently routes a ask directive. Run the exact directive.stage/directive.unit pair returned by aidlc-orchestrate.ts next.
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:23:54Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-state
+**Command**: aidlc-state unit complete --stage code-generation --unit u2-term-extraction
+**Error**: Refusing to complete unit "u2-term-extraction" for "code-generation": it is not the active unit (no unit is active — start it first).
+
+---
+
+## Stage Skip
+**Timestamp**: 2026-10-04T11:23:54Z
+**Event**: STAGE_SKIPPED
+**Stage**: code-generation
+**Reason**: Skipped by jump to functional-design (forward)
+**Skip Kind**: jump
+
+---
+
+## Stage Jump
+**Timestamp**: 2026-10-04T11:23:54Z
+**Event**: STAGE_JUMPED
+**Direction**: FORWARD
+**Source**: code-generation
+**Target**: functional-design
+**Scope**: feature
+**Details**: FORWARD jump from code-generation to functional-design (3.1). Scope: feature.
+**Source Baseline**: sha256:0a1807d184af95104fe43fab6a5f00e59b807a553f515cfaf1c87b96d56f3beb
+
+---
+
+## Stage Start
+**Timestamp**: 2026-10-04T11:23:54Z
+**Event**: STAGE_STARTED
+**Stage**: functional-design
+**Agent**: aidlc-architect-agent
+**Source Baseline**: sha256:0a1807d184af95104fe43fab6a5f00e59b807a553f515cfaf1c87b96d56f3beb
+
+---
+
+## Stage Skip
+**Timestamp**: 2026-10-04T11:24:19Z
+**Event**: STAGE_SKIPPED
+**Stage**: nfr-requirements
+**Reason**: Skipped by jump to code-generation (forward)
+**Skip Kind**: jump
+
+---
+
+## Stage Skip
+**Timestamp**: 2026-10-04T11:24:19Z
+**Event**: STAGE_SKIPPED
+**Stage**: functional-design
+**Reason**: Skipped by jump to code-generation (forward)
+**Skip Kind**: jump
+
+---
+
+## Stage Jump
+**Timestamp**: 2026-10-04T11:24:19Z
+**Event**: STAGE_JUMPED
+**Direction**: FORWARD
+**Source**: functional-design
+**Target**: code-generation
+**Scope**: feature
+**Details**: FORWARD jump from functional-design to code-generation (3.5). Scope: feature.
+**Source Baseline**: sha256:0a1807d184af95104fe43fab6a5f00e59b807a553f515cfaf1c87b96d56f3beb
+
+---
+
+## Stage Start
+**Timestamp**: 2026-10-04T11:24:19Z
+**Event**: STAGE_STARTED
+**Stage**: code-generation
+**Agent**: aidlc-developer-agent
+**Source Baseline**: sha256:0a1807d184af95104fe43fab6a5f00e59b807a553f515cfaf1c87b96d56f3beb
+
+---
+
+## Error Logged
+**Timestamp**: 2026-10-04T11:24:24Z
+**Event**: ERROR_LOGGED
+**Tool**: aidlc-log
+**Command**: aidlc-log review --stage code-generation --unit u2-term-extraction --reviewer aidlc-architecture-reviewer-agent --iteration 2
+**Error**: Cannot start review iteration 2 for "code-generation" because the next iteration is 1. Retry with --iteration 1.
+
+---
+
+## Review Requested
+**Timestamp**: 2026-10-04T11:24:29Z
+**Event**: REVIEW_REQUESTED
+**Stage**: code-generation
+**Reviewer**: aidlc-architecture-reviewer-agent
+**Unit**: u2-term-extraction
+**Iteration**: 1
+**Artifact Fingerprint**: sha256:aa2c127d3b38c7669a09cb215191a72d8ea91c09da0873b9c3a3e97770212569
+**Request Id**: review:d3415f15118a813986d7535b7bbbffa4
+**Source Fingerprint**: 00180ca04c1fe36224f590549ffe7b8299d1e98ea86f6b05f496a935d1417b6b
+**Unit Source Fingerprint**: sha256:520b24a3e1e3a0213c6e23f3701a89d3483bcb5709eb3a6c77fc85672de9d4f4
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-04T11:37:40Z
+**Event**: HUMAN_TURN
+**Session**: ses_f075f579cffeY1AuKi93ORtbeq
+
+---
